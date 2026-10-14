@@ -44,11 +44,14 @@ export const SIGNS: Sign[] = [
   { id: "te-amo", glosa: "TE-AMO", significado: "Te amo", unidadId: "1", tipo: "estatica",
     descripcion: { configuracionMano: "Pulgar, índice y meñique extendidos, medio y anular doblados", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
     erroresComunes: ["Pulgar doblado (parece cuernos)"], video: "/videos/te-amo.mp4" },
+  { id: "hola", glosa: "HOLA", significado: "Saludo", unidadId: "2", tipo: "dinamica",
+    descripcion: { configuracionMano: "Mano plana, dedos extendidos y juntos", ubicacion: "Empieza en la frente, a la altura de la sien", orientacion: "Palma hacia adelante, la mano se aleja de la frente hacia el lado" },
+    erroresComunes: ["Dedos separados", "Empezar muy lejos de la cabeza"], video: "/videos/hola.mp4" },
 ];
 
 export const UNITS: Unit[] = [
-  { id: "1", nombre: "Unidad 1: Alfabeto y números", descripcion: "10 señas estáticas para arrancar.", signIds: SIGNS.map(s => s.id) },
-  { id: "2", nombre: "Unidad 2: Saludos", descripcion: "Próximamente", signIds: [] },
+  { id: "1", nombre: "Unidad 1: Alfabeto y números", descripcion: "10 señas estáticas para arrancar.", signIds: SIGNS.filter(s => s.unidadId === "1").map(s => s.id) },
+  { id: "2", nombre: "Unidad 2: Saludos", descripcion: "Saludos básicos con avatar 3D.", signIds: ["hola"] },
   { id: "3", nombre: "Unidad 3: Familia", descripcion: "Próximamente", signIds: [] },
 ];
 

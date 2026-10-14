@@ -21,7 +21,7 @@ export default function SignPage() {
   const idx = SIGNS.findIndex(s => s.id === sign.id);
   const prev = SIGNS[idx - 1], next = SIGNS[idx + 1];
   const sp = p.signs[sign.id];
-  const locked = p.plan !== "pago" && idx >= FREE_CAMERA_SIGNS;
+  const locked = p.plan !== "pago" && idx >= FREE_CAMERA_SIGNS && sign.id !== "hola"; // hola libre para la demo
 
   return (
     <div className="space-y-5">
