@@ -1,40 +1,33 @@
 "use client";
-// Progreso en localStorage (modo demo). Cuando haya backend, lib/api.ts lo reemplaza.
-export type SignProgress = { seen: boolean; bestScore: number; mastered: boolean; masteredAt?: string };
-export type Progress = { signs: Record<string, SignProgress>; streak: number; lastActive?: string; plan: "gratis" | "pago" };
+// Progreso en localStorage (modo demo / sin backend). Con NEXT_PUBLIC_API_URL, lib/store.tsx usa la API.
+import { applyAttempt, applySeen, localDay, MASTER_THRESHOLD } from "./gamification";
+import type { AttemptResult, PlanId, Progress } from "./types";
 
-const KEY = "amanos.progress.v1";
-export const THRESHOLD = Number(process.env.NEXT_PUBLIC_MASTER_THRESHOLD ?? 90);
+export type { Progress, SignProgress } from "./types";
 
-const empty = (): Progress => ({ signs: {}, streak: 0, plan: "gratis" });
+const KEY = "amanos.progress.v2";
+export const THRESHOLD = Number(process.env.NEXT_PUBLIC_MASTER_THRESHOLD ?? MASTER_THRESHOLD);
+
+export const emptyProgress = (): Progress => ({ signs: {}, streak: 0, plan: "gratis" });
 
 export function loadProgress(): Progress {
-  if (typeof window === "undefined") return empty();
-  try { const raw = localStorage.getItem(KEY); return raw ? { ...empty(), ...JSON.parse(raw) } : empty(); }
-  catch { return empty(); }
+  if (typeof window === "undefined") return emptyProgress();
+  try { const raw = localStorage.getItem(KEY); return raw ? { ...emptyProgress(), ...JSON.parse(raw) } : emptyProgress(); }
+  catch { return emptyProgress(); }
 }
-export function saveProgress(p: Progress) {
-  try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {}
+export function saveProgress(p: Progress) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {} }
+
+export function markSeen(id: string): Progress {
+  const { progress } = applySeen(loadProgress(), id, localDay());
+  saveProgress(progress); return progress;
 }
-function touchStreak(p: Progress) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (p.lastActive === today) return;
-  const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  p.streak = p.lastActive === y ? p.streak + 1 : 1;
-  p.lastActive = today;
+export function recordAttempt(id: string, score: number): { progress: Progress } & AttemptResult {
+  const r = applyAttempt(loadProgress(), id, score, localDay(), THRESHOLD);
+  saveProgress(r.progress); return r;
 }
-export function markSeen(id: string) {
+export function setPlan(plan: Progress["plan"], planId?: PlanId): Progress {
   const p = loadProgress();
-  p.signs[id] = { ...(p.signs[id] ?? { seen: false, bestScore: 0, mastered: false }), seen: true };
-  touchStreak(p); saveProgress(p); return p;
+  p.plan = plan; p.planId = plan === "pago" ? planId ?? "mensual" : undefined;
+  saveProgress(p); return p;
 }
-export function recordScore(id: string, score: number) {
-  const p = loadProgress();
-  const cur = p.signs[id] ?? { seen: true, bestScore: 0, mastered: false };
-  const best = Math.max(cur.bestScore, score);
-  const mastered = cur.mastered || score >= THRESHOLD;
-  p.signs[id] = { ...cur, seen: true, bestScore: best, mastered, masteredAt: mastered && !cur.mastered ? new Date().toISOString() : cur.masteredAt };
-  touchStreak(p); saveProgress(p); return p;
-}
-export function setPlan(plan: Progress["plan"]) { const p = loadProgress(); p.plan = plan; saveProgress(p); return p; }
 export function resetProgress() { try { localStorage.removeItem(KEY); } catch {} }

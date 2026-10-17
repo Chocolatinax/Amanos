@@ -1,11 +1,12 @@
-// Diccionario v0 para la demo: 10 señas ESTÁTICAS (solo forma de mano).
+// Vocabulario de la demo. Las referencias LESSA requieren revisión humana.
 // Reemplazar glosas/descripciones con lo que confirme alguien que sepa LESSA.
 export type Sign = {
   id: string;
   glosa: string;
   significado: string;
   unidadId: string;
-  tipo: "estatica" | "dinamica";
+  tipo: "estatica" | "dinamica" | "ubicacion";
+  pagina?: string;
   descripcion: { configuracionMano: string; ubicacion: string; orientacion: string };
   erroresComunes: string[];
   video: string; // ruta en /public/videos
@@ -23,36 +24,35 @@ export const SIGNS: Sign[] = [
   { id: "c", glosa: "C", significado: "Letra C", unidadId: "1", tipo: "estatica",
     descripcion: { configuracionMano: "Mano curva formando una C", ubicacion: "Frente al pecho", orientacion: "Palma hacia el lado" },
     erroresComunes: ["C demasiado cerrada (parece O)"], video: "/videos/c.mp4" },
-  { id: "l", glosa: "L", significado: "Letra L", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Índice hacia arriba y pulgar hacia el lado, el resto cerrado", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Pulgar poco abierto"], video: "/videos/l.mp4" },
-  { id: "v", glosa: "V", significado: "Letra V", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Índice y medio extendidos y separados, el resto cerrado", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Dedos juntos (parece U)"], video: "/videos/v.mp4" },
-  { id: "y", glosa: "Y", significado: "Letra Y", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Pulgar y meñique extendidos, el resto cerrado", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Índice medio extendido"], video: "/videos/y.mp4" },
-  { id: "uno", glosa: "1", significado: "Número uno", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Índice extendido hacia arriba, el resto cerrado", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Pulgar abierto (parece L)"], video: "/videos/uno.mp4" },
-  { id: "tres", glosa: "3", significado: "Número tres", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Pulgar, índice y medio extendidos", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Usar anular en vez de pulgar"], video: "/videos/tres.mp4" },
-  { id: "cinco", glosa: "5", significado: "Número cinco", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Mano abierta, cinco dedos extendidos y separados", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Dedos juntos (parece B)"], video: "/videos/cinco.mp4" },
-  { id: "te-amo", glosa: "TE-AMO", significado: "Te amo", unidadId: "1", tipo: "estatica",
-    descripcion: { configuracionMano: "Pulgar, índice y meñique extendidos, medio y anular doblados", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
-    erroresComunes: ["Pulgar doblado (parece cuernos)"], video: "/videos/te-amo.mp4" },
   { id: "hola", glosa: "HOLA", significado: "Saludo", unidadId: "2", tipo: "dinamica",
-    descripcion: { configuracionMano: "Mano plana, dedos extendidos y juntos", ubicacion: "Empieza en la frente, a la altura de la sien", orientacion: "Palma hacia adelante, la mano se aleja de la frente hacia el lado" },
-    erroresComunes: ["Dedos separados", "Empezar muy lejos de la cabeza"], video: "/videos/hola.mp4" },
+    descripcion: { configuracionMano: "Observá la forma de la mano en el video", ubicacion: "Observá la posición inicial y final en el video", orientacion: "Seguí la orientación y el movimiento del video" },
+    erroresComunes: [], video: "/videos/hola.mp4" },
+  ...([
+    ["buenos-dias", "BUENOS DÍAS", "2", "dinamica", "27"],
+    ["buenas-tardes", "BUENAS TARDES", "2", "dinamica", "27"],
+    ["adios", "ADIÓS", "2", "dinamica", "21"],
+    ["yo", "YO", "3", "ubicacion", "29"],
+    ["tu", "TÚ", "3", "ubicacion", "29"],
+    ["mucho-gusto", "MUCHO GUSTO", "3", "dinamica", "25"],
+    ["gracias", "GRACIAS", "4", "dinamica", "22"],
+  ] as const).map(([id, glosa, unidadId, tipo, pagina]): Sign => ({
+    id, glosa, significado: glosa, unidadId, tipo, pagina,
+    descripcion: {
+      configuracionMano: "Referencia LESSA pendiente de revisión con el equipo",
+      ubicacion: "Consultar la ubicación en el material de referencia",
+      orientacion: "Consultar la orientación en el material de referencia",
+    },
+    erroresComunes: [], video: `/videos/${id}.mp4`,
+  })),
 ];
 
+export const STATIC_SIGN_IDS = SIGNS.filter(s => s.tipo === "estatica").map(s => s.id);
+
 export const UNITS: Unit[] = [
-  { id: "1", nombre: "Unidad 1: Alfabeto y números", descripcion: "10 señas estáticas para arrancar.", signIds: SIGNS.filter(s => s.unidadId === "1").map(s => s.id) },
-  { id: "2", nombre: "Unidad 2: Saludos", descripcion: "Saludos básicos con avatar 3D.", signIds: ["hola"] },
-  { id: "3", nombre: "Unidad 3: Familia", descripcion: "Próximamente", signIds: [] },
+  { id: "1", nombre: "Unidad 1: Letras", descripcion: "A, B y C · páginas 12–20", signIds: ["a", "b", "c"] },
+  { id: "2", nombre: "Unidad 2: Saludos", descripcion: "Hola, buenos días, buenas tardes y adiós", signIds: ["hola", "buenos-dias", "buenas-tardes", "adios"] },
+  { id: "3", nombre: "Unidad 3: Presentación", descripcion: "Yo, tú y mucho gusto", signIds: ["yo", "tu", "mucho-gusto"] },
+  { id: "4", nombre: "Unidad 4: Cortesía", descripcion: "Gracias", signIds: ["gracias"] },
 ];
 
 export const getSign = (id: string) => SIGNS.find(s => s.id === id);

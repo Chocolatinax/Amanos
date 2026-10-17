@@ -1,16 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/700.css";
+import "material-symbols/outlined.css";
 import "./globals.css";
+import { AppProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "Amanos",
-  description: "Aprendé LESSA con la cámara validando cada seña.",
+  title: "Amanos · Aprendé LESSA",
+  description: "Aprendé la Lengua de Señas Salvadoreña con lecciones en video y práctica con tu cámara.",
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#2f7cf6" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#1f63d6" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh"><AppProvider>{children}</AppProvider></body>
     </html>
   );
 }

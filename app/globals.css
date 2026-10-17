@@ -3,8 +3,27 @@
 @tailwind utilities;
 
 :root { color-scheme: light; }
-body { @apply bg-slate-50 text-slate-900 antialiased; }
+html { scroll-behavior: smooth; }
+body { @apply bg-background font-body-md text-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed; }
+::-webkit-scrollbar { display: none; }
+
+/* Clases heredadas: las usa /capture (herramienta interna). */
 .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition active:scale-[0.98] disabled:opacity-50; }
 .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
 .btn-ghost { @apply btn bg-white text-slate-800 ring-1 ring-slate-200 hover:bg-slate-100; }
 .card { @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200; }
+
+/* Botón con "labio" que se hunde al presionar (DESIGN.md: Tactile Button Press). */
+.btn-push { @apply inline-flex items-center justify-center gap-space-sm rounded-xl border-b-4 px-space-lg font-label-lg text-label-lg transition-all duration-100 active:translate-y-[2px] active:border-b-[1px] disabled:opacity-50 disabled:pointer-events-none; }
+.btn-push-primary { @apply btn-push h-12 border-[#16489C] bg-primary-container text-on-primary hover:brightness-110; }
+.btn-push-success { @apply btn-push h-12 border-[#004d1c] bg-secondary text-on-secondary hover:brightness-110; }
+.btn-push-ghost { @apply btn-push h-12 border-2 border-b-4 border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary-container hover:bg-primary-fixed/40; }
+.card-surface { @apply rounded-2xl bg-surface-container-lowest shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06),0_1px_3px_0_rgba(15,23,42,0.04)]; }
+
+@keyframes halo { 0% { transform: scale(1); opacity: .5 } 100% { transform: scale(1.5); opacity: 0 } }
+.halo::before { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: rgb(31 99 214 / .35); animation: halo 1.8s ease-out infinite; }
+@keyframes pop { 0% { transform: scale(.85); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+.pop { animation: pop .25s ease-out both; }
+@keyframes confetti { 0% { transform: translateY(-10px) rotate(0); opacity: 1 } 100% { transform: translateY(420px) rotate(540deg); opacity: 0 } }
+.confetti { position: absolute; top: 0; width: 8px; height: 14px; border-radius: 2px; animation: confetti 2.4s ease-in forwards; }
+@media (prefers-reduced-motion: reduce) { .halo::before, .confetti, .pop { animation: none } }

@@ -1,46 +1,35 @@
 "use client";
-import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getUser, logout, type User } from "@/lib/auth";
-import { loadProgress, type Progress } from "@/lib/progress";
+import { useEffect } from "react";
+import { useApp } from "@/lib/store";
+import AppHeader, { MobileDock } from "./AppHeader";
+import Footer from "./Footer";
+import Icon from "./Icon";
 
-export function useProgress() {
-  const [p, setP] = useState<Progress | null>(null);
-  useEffect(() => { setP(loadProgress()); }, []);
-  return [p, setP] as const;
-}
-
+/** Marco de las pantallas privadas: exige sesión, muestra cabecera, dock móvil y pie. */
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const { ready, user, syncError } = useApp();
   const router = useRouter();
-  const pathname = usePathname();
-  const [user, setUser] = useState<User | null | undefined>(undefined);
-  const [progress] = useProgress();
+  const path = usePathname();
+  const immersive = path.startsWith("/app/practica"); // cámara a pantalla completa: sin dock ni pie
 
-  useEffect(() => {
-    const u = getUser();
-    if (!u) router.replace("/login"); else setUser(u);
-  }, [router, pathname]);
+  useEffect(() => { if (ready && !user) router.replace("/login"); }, [ready, user, router]);
 
-  if (!user) return <div className="grid min-h-dvh place-items-center text-slate-500">Cargando…</div>;
+  if (!ready || !user) return <div className="grid min-h-dvh place-items-center text-on-surface-variant">Cargando…</div>;
 
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <Link href="/app" className="flex items-center gap-2 font-bold text-brand-600">
-            <span className="text-xl">✌🏻</span> Amanos
-          </Link>
-          <div className="flex items-center gap-3 text-sm">
-            <span title="Racha" className="rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">🔥 {progress?.streak ?? 0}</span>
-            <Link href="/app/paywall" className={`rounded-full px-3 py-1 font-semibold ${progress?.plan === "pago" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600"}`}>
-              {progress?.plan === "pago" ? "Plan $5/mes" : "Gratis"}
-            </Link>
-            <button onClick={() => { logout(); router.replace("/login"); }} className="text-slate-500 hover:text-slate-800">Salir</button>
+    <div className="min-h-dvh bg-background">
+      <AppHeader />
+      <main className={`w-full pt-16 ${immersive ? "" : "pb-24 lg:pb-0"}`}>
+        {syncError && (
+          <div role="status" className="mx-auto flex max-w-3xl items-center gap-space-sm bg-tertiary-fixed px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed sm:rounded-b-xl">
+            <Icon name="cloud_off" className="text-lg" /> Sin conexión con el servidor. Tu avance se guarda en este dispositivo.
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+        )}
+        {children}
+      </main>
+      {!immersive && <Footer />}
+      {!immersive && <MobileDock />}
     </div>
   );
 }

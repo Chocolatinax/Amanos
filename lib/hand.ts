@@ -1,7 +1,8 @@
 "use client";
 import { FilesetResolver, HandLandmarker, type HandLandmarkerResult } from "@mediapipe/tasks-vision";
 
-export type Vec = number[]; // 63 = 21 puntos x (x,y,z) normalizados
+export { normalize } from "./features";
+export type { Vec } from "./features";
 
 // Todo se sirve desde /public para no depender de internet en la demo. El CDN queda de respaldo.
 const WASM_LOCAL = "/mediapipe/wasm";
@@ -25,7 +26,7 @@ export async function getHandLandmarker(): Promise<HandLandmarker> {
       const make = (delegate: "GPU" | "CPU") => HandLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: modelOk ? MODEL_LOCAL : MODEL_CDN, delegate },
         runningMode: "VIDEO",
-        numHands: 1,
+        numHands: 2,
         minHandDetectionConfidence: 0.6,
         minHandPresenceConfidence: 0.6,
         minTrackingConfidence: 0.6,
@@ -35,24 +36,6 @@ export async function getHandLandmarker(): Promise<HandLandmarker> {
     })().catch(e => { loading = null; throw e; });
   }
   return loading;
-}
-
-/**
- * Normaliza 21 landmarks: origen en la muñeca (0), escala por distancia muñeca -> base del dedo medio (9),
- * y espeja la mano izquierda para que ambas manos compartan referencia.
- */
-export function normalize(result: HandLandmarkerResult): Vec | null {
-  const lm = result.landmarks?.[0];
-  if (!lm || lm.length !== 21) return null;
-  const handed = result.handedness?.[0]?.[0]?.categoryName ?? "Right";
-  const flip = handed === "Left" ? -1 : 1;
-  const w = lm[0], m = lm[9];
-  const scale = Math.hypot(m.x - w.x, m.y - w.y, m.z - w.z) || 1e-6;
-  const out: number[] = [];
-  for (const p of lm) {
-    out.push(((p.x - w.x) * flip) / scale, (p.y - w.y) / scale, (p.z - w.z) / scale);
-  }
-  return out;
 }
 
 export function drawLandmarks(ctx: CanvasRenderingContext2D, result: HandLandmarkerResult, w: number, h: number, color = "#2f7cf6") {
