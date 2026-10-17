@@ -10,7 +10,7 @@ import { useApp } from "@/lib/store";
 const TIPO = { estatica: "Seña estática", dinamica: "Seña con movimiento", ubicacion: "Estática con ubicación" } as const;
 const MOVIMIENTO = {
   estatica: "Seña estática: mantené la mano quieta, sin balanceos.",
-  dinamica: "Seña con movimiento: seguí el recorrido que se ve en el video, de principio a fin.",
+  dinamica: "Seña con movimiento: seguí el recorrido que se ve en el avatar, de principio a fin.",
   ubicacion: "Seña estática: lo que importa es dónde se ubica la mano respecto al cuerpo.",
 } as const;
 
@@ -65,7 +65,7 @@ export default function SignPage() {
           <div className="flex flex-col gap-space-md lg:col-span-7">
             <SignVideo sign={sign} variant="full" ratio="16 / 10" className="!rounded-[24px] shadow-xl" />
             <p className="px-space-sm font-body-sm text-body-sm text-on-surface-variant">
-              Material del equipo · {sign.id === "hola" ? "video de referencia" : `página ${sign.pagina ?? "12–20"}`}. <span className="text-outline">Validado por señante nativo: pendiente.</span>
+              Material del equipo · {sign.id === "hola" ? "avatar de referencia" : `página ${sign.pagina ?? "12–20"}`}. <span className="text-outline">Validado por señante nativo: pendiente.</span>
             </p>
           </div>
           <div className="flex flex-col gap-space-md lg:col-span-5">
@@ -94,7 +94,7 @@ export default function SignPage() {
       <section className="mx-auto mt-space-xl w-full max-w-6xl px-margin md:px-margin-tablet lg:px-margin-desktop">
         <span className="flex items-center gap-space-xs font-label-sm text-label-sm uppercase text-primary"><span className="h-0.5 w-6 bg-primary" /> Paso a paso guiado</span>
         <h2 className="mt-1 font-headline-lg text-headline-lg">¿Cómo hacer la seña?</h2>
-        <p className="mt-1 font-body-md text-body-md text-on-surface-variant">Seguí estos cuatro pasos con tu mano dominante y compará con el video.</p>
+        <p className="mt-1 font-body-md text-body-md text-on-surface-variant">Seguí estos cuatro pasos con tu mano dominante y compará con el avatar.</p>
         <div className="mt-space-md grid grid-cols-1 gap-gutter sm:grid-cols-2 lg:grid-cols-4">
           {steps.map(s => (
             <div key={s.n} className="card-surface flex flex-col gap-space-sm p-space-md">

@@ -25,7 +25,7 @@ export const SIGNS: Sign[] = [
     descripcion: { configuracionMano: "Mano curva formando una C", ubicacion: "Frente al pecho", orientacion: "Palma hacia el lado" },
     erroresComunes: ["C demasiado cerrada (parece O)"], video: "/videos/c.mp4" },
   { id: "hola", glosa: "HOLA", significado: "Saludo", unidadId: "2", tipo: "dinamica",
-    descripcion: { configuracionMano: "Observá la forma de la mano en el video", ubicacion: "Observá la posición inicial y final en el video", orientacion: "Seguí la orientación y el movimiento del video" },
+    descripcion: { configuracionMano: "Observá la forma de la mano en el avatar", ubicacion: "Observá la posición inicial y final en el avatar", orientacion: "Seguí la orientación y el movimiento del avatar" },
     erroresComunes: [], video: "/videos/hola.mp4" },
   ...([
     ["buenos-dias", "BUENOS DÍAS", "2", "dinamica", "27"],

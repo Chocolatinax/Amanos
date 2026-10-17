@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "purpose": "camera-recognition-reference",
+  "status": "reference-only",
+  "coordinateSystem": "mediapipe-holistic-normalized-image",
+  "notes": "Original detections, including pose and interpolation flags. Not hand-world-v2 classifier samples. Dynamic/location signs require temporal/body validation.",
+  "signs": [
+    {
+      "id": "a",
+      "name": "A",
+      "url": "/movements/a.json",
+      "frames": 93,
+      "fps": 30.011832622180787,
+      "width": 478,
+      "height": 850
+    },
+    {
+      "id": "tu",
+      "name": "Tu",
+      "url": "/movements/tu.json",
+      "frames": 87,
+      "fps": 30.232243865711695,
+      "width": 478,
+      "height": 850
+    },
+    {
+      "id": "gracias",
+      "name": "Gracias",
+      "url": "/movements/gracias.json",
+      "frames": 82,
+      "fps": 30.05497861942578,
+      "width": 576,
+      "height": 1024
+    }
+  ]
+}

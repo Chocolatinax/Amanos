@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Amanos Avatar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{margin:0;font-family:system-ui,sans-serif;background:#111;color:#eee;display:flex;height:100vh}
+  #panel{width:280px;padding:16px;background:#1b1b1b;display:flex;flex-direction:column;gap:12px;overflow:auto}
+  #panel label{font-size:13px;display:flex;flex-direction:column;gap:4px}
+  #panel .row{flex-direction:row;align-items:center;gap:8px}
+  button{padding:8px;border:0;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer;font-weight:600}
+  button.rec{background:#dc2626}
+  #stage{flex:1;min-width:0;position:relative}
+  #reference{width:32%;min-width:220px;background:#222;display:flex;flex-direction:column;justify-content:center;padding:8px;box-sizing:border-box}
+  #reference video{width:100%;max-height:85vh;object-fit:contain}
+  #reference p{font-size:13px;text-align:center}
+  select{padding:8px;border-radius:6px}
+  canvas{display:block}
+  #status{font-size:12px;color:#aaa;white-space:pre-line}
+
+body.embedded #panel,body.embedded #reference{display:none}
+body.embedded{background:#e6eeeb}
+body.compact #demoControls{display:none}
+#demoControls{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:8px;align-items:center;z-index:2}
+#demoControls button{background:#244c45;border-radius:24px;padding:10px 16px}
+#demoMessage{position:absolute;top:12px;left:12px;right:12px;color:#244c45;text-align:center}
+</style>
+</head>
+<body>
+<div id="panel">
+  <b>Amanos, avatar de senas</b>
+  <label>Señas preparadas<select id="preset"><option value="A">A</option><option value="Tu">TÚ</option><option value="Gracias">GRACIAS</option><option value="Mucho gusto">MUCHO GUSTO</option></select></label>
+  <button id="loadPreset">Cargar video y avatar</button>
+  <div style="font-size:12px;color:#aaa">Compará con el original. Usá el control de cuadros para revisar cada postura.</div>
+  <label>1. Avatar (.vrm, VRM 0.x)<input type="file" id="vrmFile" accept=".vrm"></label>
+  <label>2. Sena (.json de extract_landmarks.py)<input type="file" id="jsonFile" accept=".json"></label>
+  <label class="row"><input type="checkbox" id="useCorrections" checked> Correcciones de manos para la demo</label>
+  <label>Intensidad de corrección <input type="range" id="correctionStrength" min="0" max="1" step="0.05" value="1"></label>
+  <label class="row"><input type="checkbox" id="handContact" checked> Contacto de manos en MUCHO GUSTO</label>
+  <div style="font-size:12px;color:#aaa">Ajustes preparados para estos videos. Desmarcá correcciones para comparar con la captura original.</div>
+  <button id="closeHands">Acercar manos</button>
+  <button id="fullView">Ver cuerpo</button>
+  <label>Velocidad <input type="range" id="speed" min="0.25" max="1.5" step="0.05" value="1"></label>
+  <label class="row"><input type="checkbox" id="loop" checked> Loop</label>
+  <label class="row"><input type="checkbox" id="useIK" checked> Motor IK directo (aproximación del movimiento)</label>
+  <label class="row"><input type="checkbox" id="swap"> Reflejar movimiento e intercambiar manos</label>
+  <label class="row"><input type="checkbox" id="useFace"> Expresion facial</label>
+  <label>Fondo <input type="color" id="bg" value="#00b140"></label>
+  <label>Frame del video <input type="range" id="scrub" min="0" max="0" value="0"></label>
+  <button id="play">Reproducir video</button>
+  <hr style="border-color:#333;width:100%">
+  <b>Keyframes (animacion limpia)</b>
+  <div style="font-size:12px;color:#aaa">Mueve "Frame del video" hasta una pose buena y dale Agregar. 2 a 4 poses bastan.</div>
+  <button id="addKey">Agregar keyframe</button>
+  <div id="keyList" style="font-size:12px">0 keyframes</div>
+  <label>Segundos por tramo <input type="number" id="segDur" value="0.6" step="0.1" min="0.1"></label>
+  <label class="row"><input type="checkbox" id="pingpong"> Ida y vuelta (para senas que se repiten)</label>
+  <button id="playKeys">Reproducir keyframes</button>
+  <button id="clearKeys" style="background:#555">Borrar keyframes</button>
+  <button id="saveKeys" style="background:#555">Guardar keyframes (.json)</button>
+  <label>Cargar keyframes <input type="file" id="loadKeys" accept=".json"></label>
+  <hr style="border-color:#333;width:100%">
+  <button id="rec" class="rec">Grabar sena (.webm)</button>
+  <div id="status">Carga un avatar y una sena.</div>
+</div>
+<div id="reference"><p>Video original · misma línea de tiempo</p><video id="referenceVideo" muted playsinline></video><p id="frameInfo">Elegí una seña y cargala.</p></div>
+<div id="stage"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@0.6.11/lib/three-vrm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/kalidokit@1.1.5/dist/kalidokit.umd.js"></script>
+<script src="demo-corrections.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const status = t => $('status').textContent = t;
+const { Pose, Hand, Face, Vector, Utils } = Kalidokit;
+const lerp = Vector.lerp, clamp = Utils.clamp;
+
+// ---------- escena ----------
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color($('bg').value);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+camera.position.set(0, 1.3, 2.2);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.25, 0);
+controls.update();
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1, 1, 1).normalize();
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.4));
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize); resize();
+$('bg').oninput = e => scene.background = new THREE.Color(e.target.value);
+
+// encuadre automatico: cabeza a cintura
+function frameCamera() {
+  vrm.scene.updateMatrixWorld(true);
+  const head = vrm.humanoid.getBoneNode(THREE.VRMSchema.HumanoidBoneName.Head);
+  const hy = head ? head.getWorldPosition(new THREE.Vector3()).y : 1.4;
+  controls.target.set(0, hy - 0.25, 0);
+  camera.position.set(0, hy - 0.2, 2.4);
+  controls.update();
+}
+
+$('closeHands').onclick = () => {
+  if (!vrm) return;
+  const left = node('leftHand'), right = node('rightHand');
+  if (!left || !right) return;
+  const center = left.getWorldPosition(new THREE.Vector3()).add(right.getWorldPosition(new THREE.Vector3())).multiplyScalar(0.5);
+  controls.target.copy(center);
+  camera.position.copy(center).add(new THREE.Vector3(0, 0.06, 0.65));
+  controls.update();
+};
+$('fullView').onclick = () => { if (vrm) frameCamera(); };
+
+// ---------- estado ----------
+let vrm = null, data = null, playing = false, t = 0, recorder = null;
+let loadingPreset = false;
+let mode = 'video', keys = [], kt = 0;
+const BONES = Object.values(THREE.VRMSchema.HumanoidBoneName);
+const oldLook = new THREE.Euler();
+
+// ---------- carga de archivos ----------
+$('vrmFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  status('Cargando avatar...');
+  const buf = await f.arrayBuffer();
+  new THREE.GLTFLoader().parse(buf, '', gltf => {
+    THREE.VRMUtils.removeUnnecessaryJoints(gltf.scene);
+    THREE.VRM.from(gltf).then(v => {
+      if (vrm) scene.remove(vrm.scene);
+      vrm = v; scene.add(v.scene);
+      v.scene.rotation.y = Math.PI;   // mirando a la camara
+      saveRest();
+      frameCamera();
+      status('Avatar listo. ' + (data ? 'Dale Reproducir.' : 'Ahora carga la sena.'));
+    }).catch(err => status('Error VRM (usa VRM 0.x): ' + err));
+  }, err => status('Error leyendo el archivo: ' + err));
+};
+
+$('jsonFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  data = JSON.parse(await f.text());
+  // recorta las partes donde las manos estan abajo (inicio y final)
+  const act = data.frames.map(fr => !!(fr.leftHand || fr.rightHand));
+  const pad = Math.round(data.fps * 0.3);
+  const a = Math.max(0, act.indexOf(true) - pad);
+  const b = Math.min(data.frames.length, act.lastIndexOf(true) + 1 + pad);
+  if (act.includes(true)) data.frames = data.frames.slice(a, b);
+  smoothData(data.frames, Math.max(1, Math.round(data.fps / 30)));
+  t = 0;
+  $('scrub').max = data.frames.length - 1; $('scrub').value = 0;
+  status(`Sena "${data.name}": ${data.frames.length} frames a ${Math.round(data.fps)} fps.`);
+};
+
+// Presets keep all original frames so source video and avatar share the same timeline.
+$('loadPreset').onclick = async () => {
+  if (loadingPreset) return;
+  loadingPreset = true; $('loadPreset').disabled = true; playing = false;
+  status('Cargando video y movimiento...');
+  try {
+    const name = $('preset').value;
+    const response = await fetch('landmarks/' + encodeURIComponent(name) + '.json');
+    if (!response.ok) throw new Error('Todavía no está disponible el movimiento de ' + name);
+    const loaded = await response.json();
+    if (!vrm) {
+      const model = await fetch('avatares/Amanos.vrm');
+      if (!model.ok) throw new Error('No se encontró Amanos.vrm');
+      const buffer = await model.arrayBuffer();
+      const gltf = await new Promise((resolve, reject) => new THREE.GLTFLoader().parse(buffer, '', resolve, reject));
+      THREE.VRMUtils.removeUnnecessaryJoints(gltf.scene);
+      vrm = await THREE.VRM.from(gltf); scene.add(vrm.scene);
+      vrm.scene.rotation.y = Math.PI; saveRest(); frameCamera();
+    }
+    data = loaded; smoothData(data.frames, Math.max(1, Math.round(data.fps / 30)));
+    // Reset pose between signs; no rotations left over from the previous animation.
+    for (const b of BONES) { const n = node(b); if (n && rest[n.name]) n.quaternion.copy(rest[n.name]); }
+    keys = []; listKeys(); mode = 'video'; t = 0;
+    $('scrub').max = data.frames.length - 1; $('scrub').value = 0;
+    if (!document.body.classList.contains('embedded')) $('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';
+    $('referenceVideo').load(); showFrame(0);
+    $('play').textContent = 'Reproducir video';
+    status(name + ': ' + data.frames.length + ' cuadros. Revisá la mano y la orientación antes de exportar.');
+  } catch (e) { status('Error: ' + e.message); }
+  finally { loadingPreset = false; $('loadPreset').disabled = false; }
+};
+function syncReference() {
+  const video = $('referenceVideo');
+  if (!data || !video.getAttribute('src')) return;
+  $('frameInfo').textContent = 'Cuadro ' + $('scrub').value + ' / ' + (data.frames.length - 1) + ' · ' + t.toFixed(2) + ' s';
+  if (video.readyState < 1) return;
+  video.playbackRate = parseFloat($('speed').value);
+  if (!video.seeking && Math.abs(video.currentTime - t) > (playing ? 0.10 : 0.5 / data.fps)) video.currentTime = Math.min(t, video.duration || t);
+  if (playing && mode === 'video' && video.paused) video.play().catch(() => {});
+  else if ((!playing || mode !== 'video') && !video.paused) video.pause();
+}
+
+// ---------- rig ----------
+function rigRotation(name, rot = { x: 0, y: 0, z: 0 }, damp = 1, amt = 0.3) {
+  if (!vrm || !rot) return;
+  const bone = vrm.humanoid.getBoneNode(THREE.VRMSchema.HumanoidBoneName[name]);
+  if (!bone) return;
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rot.x * damp, rot.y * damp, rot.z * damp));
+  bone.quaternion.slerp(q, amt);
+}
+
+const FINGERS = ['Ring', 'Index', 'Little', 'Thumb', 'Middle'];
+const JOINTS = ['Proximal', 'Intermediate', 'Distal'];
+
+function rigHand(side, lm, riggedPose) {
+  const rh = Hand.solve(lm, side);
+  if (!rh) return;
+  const wrist = rh[side + 'Wrist'];
+  rigRotation(side + 'Hand', {
+    z: riggedPose && riggedPose[side + 'Hand'] ? riggedPose[side + 'Hand'].z : wrist.z,
+    y: wrist.y, x: wrist.x
+  });
+  for (const fi of FINGERS) for (const j of JOINTS) rigRotation(side + fi + j, rh[side + fi + j]);
+}
+
+function relaxHand(side) {
+  if ($('useIK').checked) {
+    for (const fi of FINGERS) for (const j of JOINTS) {
+      const n = node(side.toLowerCase() + fi + j); if (n && rest[n.name]) n.quaternion.slerp(rest[n.name], 0.1);
+    }
+    return;
+  }
+  for (const fi of FINGERS) for (const j of JOINTS) rigRotation(side + fi + j, { x: 0, y: 0, z: 0 }, 1, 0.1);
+}
+
+// =================== Motor IK directo ===================
+// Apunta cada hueso en la misma direccion que el segmento real del video
+// (hombro->codo, codo->muneca, nudillo->nudillo). Mantiene la forma 2D exacta que se ve en el video.
+let rest = {};
+const node = n => vrm && vrm.humanoid.getBoneNode(n);
+function saveRest() {
+  rest = {};
+  for (const b of BONES) { const n = node(b); if (n) rest[n.name] = n.quaternion.clone(); }
+}
+const _pq = new THREE.Quaternion();
+// Preserve signed depth; forcing every segment forward changes the sign.
+function aim(b, child, dir, amt) {
+  if (!b || !child || !rest[b.name] || dir.lengthSq() < 1e-8) return;
+  b.parent.getWorldQuaternion(_pq);
+  const tgt = dir.clone().normalize().applyQuaternion(_pq.invert());
+  const r0 = rest[b.name];
+  const cur = child.position.clone().normalize().applyQuaternion(r0);
+  const q = new THREE.Quaternion().setFromUnitVectors(cur, tgt).multiply(r0);
+  b.quaternion.slerp(q, amt);
+}
+function basis(f, l) {
+  const x = f.clone().normalize();
+  const z = new THREE.Vector3().crossVectors(x, l).normalize();
+  const y = new THREE.Vector3().crossVectors(z, x);
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+}
+const ZS = 0.5; // la profundidad de MediaPipe es ruidosa, se atenua
+const P = l => new THREE.Vector3(l.x * data.width, -l.y * data.height, -l.z * data.width * ZS);
+const PH = l => new THREE.Vector3(l.x * data.width, -l.y * data.height, -l.z * data.width);
+const vis = (l, t = 0.4) => l && (l.visibility === undefined || l.visibility > t) && l.y < 1.02 && l.y > -0.05;
+const CHAINS = { Index: [5, 6, 7, 8], Middle: [9, 10, 11, 12], Ring: [13, 14, 15, 16], Little: [17, 18, 19, 20], Thumb: [1, 2, 3, 4] };
+
+function ikArm(side, pose, hand, amt) {
+  const s = side.toLowerCase();
+  const [iS, iE, iW] = side === 'Left' ? [11, 13, 15] : [12, 14, 16];
+  const up = node(s + 'UpperArm'), lo = node(s + 'LowerArm'), hd = node(s + 'Hand');
+  const sh = pose[iS], el = pose[iE];
+  // Hand z is relative to its wrist. Use body landmarks consistently for the arm.
+  const wr = pose[iW];
+  if (vis(sh) && vis(el)) {
+    aim(up, lo, P(el).sub(P(sh)), amt);
+    if (vis(wr)) aim(lo, hd, P(wr).sub(P(el)), amt);
+  } else {
+    // brazo fuera de cuadro: lo baja suave a reposo
+    aim(up, lo, new THREE.Vector3(side === 'Left' ? 0.25 : -0.25, -1, 0.05), 0.08);
+    aim(lo, hd, new THREE.Vector3(side === 'Left' ? 0.1 : -0.1, -1, 0.15), 0.08);
+  }
+}
+
+function ikHand(side, lm, amt) {
+  const s = side.toLowerCase();
+  const h = node(s + 'Hand'), mid = node(s + 'MiddleProximal'), idx = node(s + 'IndexProximal'), lit = node(s + 'LittleProximal');
+  if (!h || !mid || !idx || !lit) return;
+  const Bl = basis(mid.position, idx.position.clone().sub(lit.position));
+  const p = lm.map(PH);
+  const Bw = basis(p[9].clone().sub(p[0]), p[5].clone().sub(p[17]));
+  const Qw = Bw.multiply(Bl.invert());
+  h.parent.getWorldQuaternion(_pq);
+  h.quaternion.slerp(_pq.invert().multiply(Qw), amt);
+  for (const [fi, ix] of Object.entries(CHAINS)) {
+    const bones = JOINTS.map(j => node(s + fi + j));
+    for (let k = 0; k < 3; k++) {
+      const b = bones[k]; if (!b) continue;
+      // VRM often omits fingertip nodes. Infer the terminal axis from the preceding phalanx.
+      const child = k < 2 ? bones[k + 1] : (b.children[0] || { position: b.position.clone() });
+      aim(b, child, p[ix[k + 1]].clone().sub(p[ix[k]]), amt);
+    }
+  }
+}
+
+// suavizado temporal centrado (sin retraso) de todos los puntos
+function smoothData(frames, r) {
+  for (const key of ['pose', 'leftHand', 'rightHand']) {
+    const src = frames.map(f => f[key] && f[key].map(l => ({ ...l })));
+    frames.forEach((f, i) => {
+      if (!f[key]) return;
+      f[key] = f[key].map((l, j) => {
+        let x = 0, y = 0, z = 0, n = 0;
+        for (let k = i - r; k <= i + r; k++) { const q = src[k] && src[k][j]; if (q) { x += q.x; y += q.y; z += q.z; n++; } }
+        return { ...l, x: x / n, y: y / n, z: z / n };
+      });
+    });
+  }
+}
+
+function rigFace(lm, imageSize) {
+  const rf = Face.solve(lm, { runtime: 'mediapipe', imageSize, smoothBlink: false });
+  if (!rf) return;
+  rigRotation('Neck', { x: rf.head.x, y: rf.head.y, z: clamp(rf.head.z, -0.15, 0.15) }, 0.4);
+  const bs = vrm.blendShapeProxy, P = THREE.VRMSchema.BlendShapePresetName;
+  if (!bs) return;
+  bs.setValue(P.Blink, 0);   // ojos siempre abiertos (el parpadeo detectado es muy ruidoso)
+  for (const k of ['I', 'A', 'E', 'O', 'U'])
+    bs.setValue(P[k], lerp(rf.mouth.shape[k], bs.getValue(P[k]), 0.5));
+  const look = new THREE.Euler(lerp(oldLook.x, rf.pupil.y, 0.4), lerp(oldLook.y, rf.pupil.x, 0.4), 0, 'XYZ');
+  oldLook.copy(look);
+  if (vrm.lookAt && vrm.lookAt.applyer) vrm.lookAt.applyer.lookAt(look);
+}
+
+function applyFrame(f) {
+  const imageSize = { width: data.width, height: data.height };
+  let rp = null;
+  if (f.pose && f.poseWorld) {
+    rp = Pose.solve(f.poseWorld, f.pose, { runtime: 'mediapipe', imageSize, enableLegs: false });
+    if (rp) {
+      rigRotation('Hips', rp.Hips.rotation, 0.4);
+      rigRotation('Chest', rp.Spine, 0.25);
+      rigRotation('Spine', rp.Spine, 0.45);
+      if (!$('useIK').checked) {
+        rigRotation('RightUpperArm', rp.RightUpperArm);
+        rigRotation('RightLowerArm', rp.RightLowerArm);
+        rigRotation('LeftUpperArm', rp.LeftUpperArm);
+        rigRotation('LeftLowerArm', rp.LeftLowerArm);
+      }
+    }
+  }
+  const swap = $('swap').checked;
+  // Swap assignments and reflect x together, including the arm landmarks.
+  const mirror = landmarks => landmarks && landmarks.map(p => ({ ...p, x: 1 - p.x }));
+  const L = swap ? mirror(f.rightHand) : f.leftHand;
+  const R = swap ? mirror(f.leftHand) : f.rightHand;
+  if ($('useIK').checked) {
+    // Contact must start from the captured arm pose, not the previous solved frame.
+    const amt = data.name === 'Mucho gusto' && $('useCorrections').checked ? 1 : 0.35;
+    let pose = f.pose;
+    if (swap && pose) {
+      pose = mirror(pose);
+      for (const [a, b] of [[11,12], [13,14], [15,16]]) [pose[a], pose[b]] = [pose[b], pose[a]];
+    }
+    if (pose) { ikArm('Left', pose, L, amt); ikArm('Right', pose, R, amt); }
+    if (L) ikHand('Left', L, amt); else relaxHand('Left');
+    if (R) ikHand('Right', R, amt); else relaxHand('Right');
+    if ($('useCorrections').checked) DemoCorrections.apply({ THREE, node, rest, name: data.name, frame: Math.round(t * data.fps), mirrored: swap, strength: +$('correctionStrength').value, contact: $('handContact').checked });
+    if ($('useFace').checked && f.face) rigFace(f.face, imageSize);
+    return;
+  }
+  if (L) rigHand('Left', L, rp); else relaxHand('Left');
+  if (R) rigHand('Right', R, rp); else relaxHand('Right');
+  if ($('useFace').checked && f.face) rigFace(f.face, imageSize);
+}
+
+// ---------- keyframes ----------
+function snapshot() {
+  const k = {};
+  for (const b of BONES) { const n = vrm.humanoid.getBoneNode(b); if (n) k[b] = n.quaternion.toArray(); }
+  return k;
+}
+function showFrame(i) {               // deterministic scrubbing, independent of the previous pose
+  t = i / data.fps;
+  for (const b of BONES) { const n = node(b); if (n && rest[n.name]) n.quaternion.copy(rest[n.name]); }
+  for (let n = 0; n < 40; n++) applyFrame(data.frames[i]);
+}
+const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+function keySeq() { return $('pingpong').checked && keys.length > 1 ? keys.concat(keys.slice(0, -1).reverse()) : keys; }
+function keysTotal() { const s = parseFloat($('segDur').value) || 0.6; return Math.max(0, keySeq().length - 1) * s + 0.6; }
+function applyKeys(time) {
+  const seq = keySeq(), seg = parseFloat($('segDur').value) || 0.6;
+  if (!seq.length) return;
+  let tt = Math.max(0, time - 0.3);                 // 0.3 s quieto al inicio
+  let i = Math.min(Math.floor(tt / seg), seq.length - 1);
+  const a = seq[i], b = seq[Math.min(i + 1, seq.length - 1)];
+  const x = i >= seq.length - 1 ? 0 : ease((tt - i * seg) / seg);
+  const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
+  for (const bn of BONES) {
+    const n = vrm.humanoid.getBoneNode(bn); if (!n || !a[bn] || !b[bn]) continue;
+    qa.fromArray(a[bn]); qb.fromArray(b[bn]); n.quaternion.copy(qa).slerp(qb, x);
+  }
+}
+const listKeys = () => $('keyList').textContent = keys.length + ' keyframes';
+
+$('scrub').oninput = e => {
+  if (!vrm || !data) return;
+  playing = false; mode = 'video'; $('play').textContent = 'Reproducir video';
+  t = +e.target.value / data.fps; showFrame(+e.target.value);
+};
+for (const control of ['useIK', 'swap', 'useFace', 'useCorrections', 'handContact', 'correctionStrength']) $(control).onchange = () => { if (vrm && data && !playing) showFrame(+$('scrub').value); };
+$('addKey').onclick = () => {
+  if (!vrm || !data) return status('Carga avatar y sena primero.');
+  showFrame(+$('scrub').value); keys.push(snapshot()); listKeys();
+};
+$('clearKeys').onclick = () => { keys = []; listKeys(); };
+$('playKeys').onclick = () => {
+  if (keys.length < 2) return status('Necesitas al menos 2 keyframes.');
+  mode = 'keys'; kt = 0; playing = true; $('play').textContent = 'Pausa';
+};
+$('saveKeys').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ name: data ? data.name : 'sena', segDur: +$('segDur').value, pingpong: $('pingpong').checked, keys })], { type: 'application/json' }));
+  a.download = (data ? data.name : 'sena') + '.keys.json'; a.click();
+};
+$('loadKeys').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const k = JSON.parse(await f.text());
+  keys = k.keys || []; $('segDur').value = k.segDur || 0.6; $('pingpong').checked = !!k.pingpong; listKeys();
+};
+
+// ---------- loop ----------
+const clock = new THREE.Clock();
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = clock.getDelta();
+  const speed = parseFloat($('speed').value);
+  if (vrm && playing && mode === 'video' && data) {
+    t += dt * speed;
+    let i = Math.floor(t * data.fps);
+    if (i >= data.frames.length) {
+      if (recorder) recorder.stop();
+      if ($('loop').checked && !recorder) { t = 0; i = 0; }
+      else { i = data.frames.length - 1; playing = false; $('play').textContent = 'Reproducir video'; }
+    }
+    $('scrub').value = i;
+    applyFrame(data.frames[i]);
+  }
+  if (vrm && playing && mode === 'keys') {
+    kt += dt * speed;
+    if (kt > keysTotal()) {
+      if (recorder) recorder.stop();
+      if ($('loop').checked && !recorder) kt = 0; else { kt = keysTotal(); playing = false; $('play').textContent = 'Reproducir video'; }
+    }
+    applyKeys(kt);
+  }
+  syncReference();
+  if (vrm) vrm.update(dt);
+  renderer.render(scene, camera);
+}
+tick();
+
+$('play').onclick = () => {
+  if (!vrm || !data) return status('Falta cargar avatar o sena.');
+  if (mode !== 'video') { mode = 'video'; playing = false; }
+  playing = !playing; if (playing && t * data.fps >= data.frames.length) t = 0;
+  $('play').textContent = playing ? 'Pausa' : 'Reproducir video';
+};
+
+// ---------- grabar una pasada (video o keyframes, segun lo ultimo que reprodujiste) ----------
+$('rec').onclick = () => {
+  if (!vrm) return status('Falta cargar el avatar.');
+  if (mode === 'video' && !data) return status('Falta cargar la sena.');
+  if (recorder) return;
+  const chunks = [];
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  recorder = new MediaRecorder(renderer.domElement.captureStream(30), { mimeType: mime, videoBitsPerSecond: 6e6 });
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+    a.download = (data ? data.name : 'sena') + (mode === 'keys' ? '-keys' : '') + '.webm'; a.click();
+    recorder = null; status('Listo, se descargo ' + a.download);
+  };
+  t = 0; kt = 0; playing = true; $('play').textContent = 'Pausa';
+  recorder.start(); status('Grabando una pasada...');
+};
+
+// Embedded lesson mode uses the same rig and authored corrections as the review player.
+const demoSign = new URLSearchParams(location.search).get('sign');
+const demoClips = {a:'A',tu:'Tu',gracias:'Gracias'};
+if (demoClips[demoSign]) {
+  document.body.classList.add('embedded');
+  if (new URLSearchParams(location.search).get('compact') === '1') document.body.classList.add('compact');
+  scene.background = new THREE.Color('#e6eeeb');
+  controls.enableZoom = false; controls.enablePan = false;
+  const bar = document.createElement('div'); bar.id = 'demoControls';
+  const play = document.createElement('button'); play.textContent = 'Pausar';
+  play.onclick = () => { $('play').click(); play.textContent = playing ? 'Pausar' : 'Reproducir'; };
+  const replay = document.createElement('button'); replay.textContent = 'Repetir';
+  replay.onclick = () => { if (!data) return; showFrame(0); playing = true; play.textContent = 'Pausar'; };
+  const speedButton = document.createElement('button'); speedButton.textContent = '1x';
+  speedButton.onclick = () => { $('speed').value = +$('speed').value === 1 ? .5 : 1; speedButton.textContent = $('speed').value + 'x'; };
+  bar.append(play,replay,speedButton); stage.append(bar);
+  const message = document.createElement('div'); message.id = 'demoMessage'; message.setAttribute('role','status');
+  message.textContent = 'Cargando avatar…'; stage.append(message);
+  const observer = new MutationObserver(() => { if ($('status').textContent.startsWith('Error:')) message.textContent = 'No se pudo cargar el avatar. Volvé a intentar recargando la página.'; });
+  observer.observe($('status'),{childList:true});
+  $('preset').value = demoClips[demoSign];
+  $('loadPreset').onclick().then(() => { if (!data || !vrm) return; $('referenceVideo').removeAttribute('src'); $('referenceVideo').load(); message.textContent = ''; playing = true; resize(); });
+}
+</script>
+</body>
+</html>

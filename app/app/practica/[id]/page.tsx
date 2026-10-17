@@ -140,7 +140,7 @@ function Practice({ id }: { id: string }) {
                 <Icon name={accepted ? "verified" : handVisible ? "search" : "front_hand"} fill={accepted} className="text-base" />
                 {!ready ? "Sin calificación" : accepted ? "¡Excelente!" : handVisible ? "Buscando la seña…" : "Esperando tu mano…"}
               </div>
-              <p role="status" className="mt-0.5 font-body-sm text-body-sm text-on-surface">{ready ? feedback : "Ensayá con la cámara y comparala con el video de referencia."}</p>
+              <p role="status" className="mt-0.5 font-body-sm text-body-sm text-on-surface">{ready ? feedback : "Ensayá con la cámara y comparala con el avatar."}</p>
               {ready && <p className="mt-0.5 font-label-sm text-xs text-on-surface-variant">Mejor: {best}% · Es similitud con referencias, no una probabilidad de acierto.</p>}
             </div>
           </div>
@@ -151,7 +151,7 @@ function Practice({ id }: { id: string }) {
       <div className="absolute right-space-md top-20 z-10 flex w-44 flex-col gap-space-sm sm:top-24 sm:w-72">
         <div className="overflow-hidden rounded-2xl bg-surface-container-lowest/95 shadow-xl backdrop-blur-md">
           <button onClick={() => setRefOpen(o => !o)} aria-expanded={refOpen} className="flex w-full items-center justify-between bg-inverse-surface/80 px-space-sm py-space-xs font-label-sm text-label-sm text-white">
-            <span className="flex items-center gap-1"><Icon name="visibility" className="text-sm" /> Referencia en video</span><Icon name={refOpen ? "expand_less" : "expand_more"} className="text-base" />
+            <span className="flex items-center gap-1"><Icon name="visibility" className="text-sm" /> Avatar de referencia</span><Icon name={refOpen ? "expand_less" : "expand_more"} className="text-base" />
           </button>
           {refOpen && <SignVideo sign={sign} className="!rounded-none" />}
         </div>
