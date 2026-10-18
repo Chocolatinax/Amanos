@@ -15,6 +15,33 @@
       "height": 850
     },
     {
+      "id": "b",
+      "name": "b",
+      "url": "/movements/b.json",
+      "frames": 147,
+      "fps": 29.7972972972973,
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "c",
+      "name": "C",
+      "url": "/movements/c.json",
+      "frames": 161,
+      "fps": 57.316224170121195,
+      "width": 478,
+      "height": 850
+    },
+    {
+      "id": "adios",
+      "name": "Adios",
+      "url": "/movements/adios.json",
+      "frames": 155,
+      "fps": 58.33354241413052,
+      "width": 478,
+      "height": 850
+    },
+    {
       "id": "tu",
       "name": "Tu",
       "url": "/movements/tu.json",
@@ -31,6 +58,24 @@
       "fps": 30.05497861942578,
       "width": 576,
       "height": 1024
+    },
+    {
+      "id": "hola",
+      "name": "Hola",
+      "url": "/movements/hola.json",
+      "frames": 82,
+      "fps": 30,
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "buenas-tardes",
+      "name": "Buenas Tardes",
+      "url": "/movements/buenas-tardes.json",
+      "frames": 194,
+      "fps": 60,
+      "width": 464,
+      "height": 832
     }
   ]
 }

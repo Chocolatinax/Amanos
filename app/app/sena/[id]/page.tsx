@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import SignVideo from "@/components/SignVideo";
+import { MOVEMENT_CHECK_IDS } from "@/lib/movement-check";
+import { CAMERA_EVALUATED_IDS } from "@/lib/human-evaluator";
 import { getSign, getUnit, SIGNS } from "@/lib/signs";
 import { useApp } from "@/lib/store";
 
@@ -27,7 +29,8 @@ export default function SignPage() {
   const idx = SIGNS.findIndex(s => s.id === sign.id);
   const prev = SIGNS[idx - 1], next = SIGNS[idx + 1];
   const sp = progress.signs[sign.id];
-  const evaluable = sign.tipo === "estatica";
+  const evaluable = CAMERA_EVALUATED_IDS.includes(sign.id);
+  const movementOnly = MOVEMENT_CHECK_IDS.includes(sign.id);
   const share = async () => {
     const url = location.href;
     try { if (navigator.share) await navigator.share({ title: `Amanos · ${sign.glosa}`, url }); else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800); } } catch {}
@@ -78,13 +81,13 @@ export default function SignPage() {
               <p className="font-body-lg text-body-lg text-on-surface-variant">{sign.significado}. {sign.descripcion.configuracionMano}.</p>
               <div className="mt-space-xs flex flex-wrap gap-space-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-surface-container px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant"><Icon name="location_on" className="text-sm" />{sign.descripcion.ubicacion}</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-surface-container px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant"><Icon name={evaluable ? "photo_camera" : "school"} className="text-sm" />{evaluable ? "Se califica con cámara" : "Práctica guiada"}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-container px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant"><Icon name={evaluable ? "photo_camera" : "school"} className="text-sm" />{evaluable ? "Se califica con cámara" : movementOnly ? "Comprobación de movimiento con cámara" : "Práctica guiada"}</span>
               </div>
             </div>
             {!evaluable && (
               <div className="flex gap-space-sm rounded-xl bg-tertiary-fixed/60 p-space-md text-on-tertiary-fixed">
                 <Icon name="info" className="text-tertiary" />
-                <p className="font-body-sm text-body-sm">Con la cámara podés ensayar esta seña, pero todavía no se califica ni se marca como dominada: requiere evaluar {sign.tipo === "dinamica" ? "el movimiento completo" : "la ubicación respecto al cuerpo"}.</p>
+                <p className="font-body-sm text-body-sm">{movementOnly ? (sign.id === "gracias" ? "La cámara comprueba el recorrido de ambas manos y muestra los puntos que debés corregir. La forma de los dedos aún requiere revisión; esta comprobación no marca la seña como dominada." : "La cámara comprueba la ubicación de las muñecas y que sostengás el contacto un segundo. Los dedos ocultos aún requieren revisión; esta comprobación no marca la seña como dominada.") : <>Con la cámara podés ensayar esta seña, pero todavía no se califica ni se marca como dominada: requiere evaluar {sign.tipo === "dinamica" ? "el movimiento completo" : "la ubicación respecto al cuerpo"}.</>}</p>
               </div>
             )}
           </div>
@@ -143,7 +146,7 @@ export default function SignPage() {
       {/* Barra de acción fija */}
       <div className="fixed inset-x-0 bottom-20 z-30 px-margin lg:bottom-0 lg:pb-space-md">
         <div className="mx-auto flex max-w-6xl items-center gap-space-md">
-          <Link href={`/app/practica/${sign.id}`} className="btn-push-primary h-14 flex-1 shadow-lg"><Icon name="videocam" /> {evaluable ? "Practicar con cámara" : "Práctica guiada con cámara"} <Icon name="arrow_forward" /></Link>
+          <Link href={`/app/practica/${sign.id}`} className="btn-push-primary h-14 flex-1 shadow-lg"><Icon name="videocam" /> {evaluable || movementOnly ? "Practicar con cámara" : "Práctica guiada con cámara"} <Icon name="arrow_forward" /></Link>
         </div>
       </div>
     </div>

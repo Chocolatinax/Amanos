@@ -55,3 +55,40 @@ test('normalization ignores image aspect ratio but retains orientation; rejects 
   const rotated = features.normalize({ ...result, worldLandmarks: [world.map(p => ({ x: -p.y, y: p.x, z: p.z }))] });
   assert.notDeepEqual(a, rotated);
 });
+
+const letterA = load('lib/letter-a.ts', { './classifier': c });
+const aReference = JSON.parse(fs.readFileSync('public/samples/a.json', 'utf8'));
+test('A accepts captured reference poses and rejects missing or unrelated data', () => {
+  assert(aReference.samples.length >= c.MIN_SAMPLES);
+  for (const sample of aReference.samples) assert.equal(letterA.evaluateA(sample, aReference).accepted, true);
+  assert.equal(letterA.evaluateA(null, aReference).accepted, false);
+  assert.equal(letterA.evaluateA(aReference.samples[0]).accepted, false);
+  assert.equal(letterA.evaluateA(vec(50), aReference).accepted, false);
+});
+test('A rejects extended fingers and a thumb crossed into the palm', () => {
+  const open = [...aReference.samples[10]];
+  for (const [base, joint, tip] of [[5,6,8],[9,10,12],[13,14,16],[17,18,20]]) {
+    for (let axis=0;axis<3;axis++) open[tip*3+axis]=2*open[joint*3+axis]-open[base*3+axis];
+  }
+  assert.equal(letterA.evaluateA(open,aReference).accepted,false);
+  assert.match(letterA.evaluateA(open,aReference).feedback,/cuatro dedos/);
+  const crossed = [...aReference.samples[10]];
+  for (let axis=0;axis<3;axis++) crossed[4*3+axis]=(crossed[5*3+axis]+crossed[17*3+axis])/2;
+  assert.equal(letterA.evaluateA(crossed,aReference).accepted,false);
+  assert.match(letterA.evaluateA(crossed,aReference).feedback,/pulgar/);
+});
+
+
+test('B accepts captured samples and rejects a fist, spread fingers and an outward thumb',()=>{
+ const {evaluateB}=load('lib/letter-b.ts',{'./classifier':c});
+ const r=JSON.parse(fs.readFileSync('public/samples/b.json'));
+ for(const v of r.samples)assert.equal(evaluateB(v,r).accepted,true);
+ const a=JSON.parse(fs.readFileSync('public/samples/a.json')).samples[0];
+ assert.equal(evaluateB(a,r).accepted,false);
+ const thumb=[...r.samples[15]];thumb[12]+=1.5;
+ assert.equal(evaluateB(thumb,r).accepted,false);
+ const spread=[...r.samples[15]];for(const i of [18,19,20])spread[i*3]+=1;
+ assert.equal(evaluateB(spread,r).accepted,false);
+ assert.equal(evaluateB(null,r).accepted,false);
+ assert.equal(evaluateB(r.samples[0]).accepted,false);
+});

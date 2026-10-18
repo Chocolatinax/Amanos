@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = path.resolve(__dirname, '../../avatar-senas');
 const target = path.resolve(__dirname, '../public/avatar');
-const clips = { a: 'A', tu: 'Tu', gracias: 'Gracias' };
+const clips = { a: 'A', b: 'b', c: 'C', adios: 'Adios', tu: 'Tu', gracias: 'Gracias', hola: 'Hola', 'buenas-tardes': 'Buenas Tardes' };
 fs.mkdirSync(path.join(target, 'landmarks'), { recursive: true });
 fs.mkdirSync(path.join(target, 'avatares'), { recursive: true });
 fs.mkdirSync(path.resolve(__dirname, '../public/movements'), { recursive: true });
@@ -23,7 +23,7 @@ body.compact #demoControls{display:none}
 html = html.replace(/<\/script>\r?\n<\/body>/, `
 // Embedded lesson mode uses the same rig and authored corrections as the review player.
 const demoSign = new URLSearchParams(location.search).get('sign');
-const demoClips = {a:'A',tu:'Tu',gracias:'Gracias'};
+const demoClips = ${JSON.stringify(clips)};
 if (demoClips[demoSign]) {
   document.body.classList.add('embedded');
   if (new URLSearchParams(location.search).get('compact') === '1') document.body.classList.add('compact');
@@ -56,4 +56,4 @@ for (const [id, name] of Object.entries(clips)) {
   manifest.signs.push({ id, name, url: '/movements/' + id + '.json', frames: data.frames.length, fps: data.fps, width: data.width, height: data.height });
 }
 fs.writeFileSync(path.resolve(__dirname, '../public/movements/manifest.json'), JSON.stringify(manifest, null, 2));
-console.log('Published A, TÚ and GRACIAS avatar player and original movement JSON.');
+console.log('Published avatar player and original movement JSON for: ' + Object.keys(clips).join(', ') + '');

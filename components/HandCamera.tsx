@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HandLandmarkerResult } from "@mediapipe/tasks-vision";
 import { getHandLandmarker, drawLandmarks } from "@/lib/hand";
+import { createBodyTracker, drawBody, type BodyFrame } from "@/lib/body-tracking";
 
 type Props = {
   active: boolean;
@@ -14,20 +15,31 @@ type Props = {
   fill?: boolean;
   /** Dibuja los 21 puntos de la mano encima del video. */
   showLandmarks?: boolean;
+  trackBody?: boolean;
+  onBodyFrame?: (frame: BodyFrame) => void;
 };
 
 /** Cámara frontal espejada con los 21 puntos de la mano dibujados encima. Todo corre en el navegador. */
-export default function HandCamera({ active, onFrame, onError, onReady, color, className, fill = false, showLandmarks = true }: Props) {
+export default function HandCamera({ active, onFrame, onError, onReady, color, className, fill = false, showLandmarks = true, trackBody = false, onBodyFrame }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cbRef = useRef(onFrame); cbRef.current = onFrame;
   const colorRef = useRef(color); colorRef.current = color;
   const showRef = useRef(showLandmarks); showRef.current = showLandmarks;
+  const bodyCb = useRef(onBodyFrame); bodyCb.current = onBodyFrame;
+  const [bodyStatus, setBodyStatus] = useState<"off" | "loading" | "ready" | "error">("off");
   const [status, setStatus] = useState<"idle" | "loading" | "running" | "error">("idle");
 
   useEffect(() => {
     if (!active) return;
     let raf = 0, stream: MediaStream | null = null, stopped = false, lastVideoTime = -1;
+    let body: Awaited<ReturnType<typeof createBodyTracker>> | null = null;
+    let bodyFrame: BodyFrame | null = null, lastBodyTime = -Infinity;
+    setBodyStatus(trackBody ? "loading" : "off");
+    if (trackBody) createBodyTracker().then(tracker => {
+      if (stopped) { tracker.close(); return; }
+      body = tracker; setBodyStatus("ready");
+    }).catch(() => { if (!stopped) setBodyStatus("error"); });
     setStatus("loading");
     (async () => {
       try {
@@ -52,6 +64,12 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
               catch { stream?.getTracks().forEach(t => t.stop()); setStatus("error"); onError?.("Se interrumpió la detección. Desactivá y volvé a activar la cámara."); return; }
               const ctx = c.getContext("2d")!;
               ctx.clearRect(0, 0, c.width, c.height);
+              if (body && ts - lastBodyTime >= 120) {
+                lastBodyTime = ts;
+                try { bodyFrame = body.detect(v, ts); bodyCb.current?.(bodyFrame); }
+                catch { body.close(); body = null; bodyFrame = null; setBodyStatus("error"); }
+              }
+              if (showRef.current && bodyFrame && ts - bodyFrame.timestamp < 250) drawBody(ctx, bodyFrame, c.width, c.height);
               if (showRef.current) drawLandmarks(ctx, res, c.width, c.height, colorRef.current);
               cbRef.current?.(res, ts);
             }
@@ -72,16 +90,19 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
     })();
     return () => {
       stopped = true; cancelAnimationFrame(raf);
+      body?.close();
       stream?.getTracks().forEach(t => t.stop());
       const v = videoRef.current; if (v) v.srcObject = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, trackBody]);
 
   return (
     <div className={`${fill ? "absolute inset-0" : "relative rounded-2xl"} overflow-hidden bg-inverse-surface ${className ?? ""}`} style={fill ? undefined : { aspectRatio: "4 / 3" }}>
-      <video ref={videoRef} playsInline muted className="absolute inset-0 h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} />
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} />
+      <video ref={videoRef} playsInline muted className={`absolute inset-0 h-full w-full ${fill ? "object-contain md:object-cover" : "object-cover"}`} style={{ transform: "scaleX(-1)" }} />
+      <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full ${fill ? "object-contain md:object-cover" : "object-cover"}`} style={{ transform: "scaleX(-1)" }} />
+      {status === "running" && bodyStatus === "loading" && <p role="status" className="pointer-events-none absolute left-3 top-16 rounded-lg bg-black/65 px-3 py-2 text-xs text-white">Cargando máscara de cara y brazos…</p>}
+      {status === "running" && bodyStatus === "error" && <p role="status" className="pointer-events-none absolute left-3 top-16 max-w-[65%] rounded-lg bg-black/65 px-3 py-2 text-xs text-white">No se pudo cargar la máscara de cara y brazos. Las manos siguen activas; apagá y encendé la cámara para reintentar.</p>}
       {status === "loading" && (
         <div className="absolute inset-0 grid place-items-center bg-inverse-surface/60 text-sm text-white/90"><span className="flex items-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Cargando cámara y modelo…</span></div>
       )}

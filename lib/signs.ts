@@ -25,7 +25,7 @@ export const SIGNS: Sign[] = [
     descripcion: { configuracionMano: "Mano curva formando una C", ubicacion: "Frente al pecho", orientacion: "Palma hacia el lado" },
     erroresComunes: ["C demasiado cerrada (parece O)"], video: "/videos/c.mp4" },
   { id: "hola", glosa: "HOLA", significado: "Saludo", unidadId: "2", tipo: "dinamica",
-    descripcion: { configuracionMano: "Observá la forma de la mano en el avatar", ubicacion: "Observá la posición inicial y final en el avatar", orientacion: "Seguí la orientación y el movimiento del avatar" },
+    descripcion: { configuracionMano: "Cuatro dedos extendidos y juntos, con el pulgar pegado a la palma", ubicacion: "Iniciá junto a la frente y completá el saludo hacia afuera", orientacion: "Seguí la orientación y el movimiento del avatar" },
     erroresComunes: [], video: "/videos/hola.mp4" },
   ...([
     ["buenos-dias", "BUENOS DÍAS", "2", "dinamica", "27"],
@@ -37,7 +37,15 @@ export const SIGNS: Sign[] = [
     ["gracias", "GRACIAS", "4", "dinamica", "22"],
   ] as const).map(([id, glosa, unidadId, tipo, pagina]): Sign => ({
     id, glosa, significado: glosa, unidadId, tipo, pagina,
-    descripcion: {
+    descripcion: id === "adios" ? {
+      configuracionMano: "Mano abierta con los dedos extendidos, como en el avatar",
+      ubicacion: "Al costado de la cabeza; mantené ambos hombros visibles para evaluar la ubicación",
+      orientacion: "Palma hacia adelante con los cambios de orientación del movimiento de referencia",
+    } : id === "buenas-tardes" ? {
+      configuracionMano: "Iniciá con el pulgar arriba y los otros dedos cerrados; después extendé la mano",
+      ubicacion: "Frente al cuerpo, con el cambio de posición que muestra el avatar",
+      orientacion: "Pasá a la mano extendida con la palma hacia abajo, siguiendo el video de referencia",
+    } : {
       configuracionMano: "Referencia LESSA pendiente de revisión con el equipo",
       ubicacion: "Consultar la ubicación en el material de referencia",
       orientacion: "Consultar la orientación en el material de referencia",
