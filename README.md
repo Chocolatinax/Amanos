@@ -1,5 +1,7 @@
 # Amanos · demo de 11 señas
 
+Desarrollado por **Christian Renderos (Chris)**, estudiante de Ingeniería en Software y Negocios Digitales en ESEN.
+
 ## Ejecutar
 
 `npm install`, `npm run dev`. Abrir http://localhost:3000.
