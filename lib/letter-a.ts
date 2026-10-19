@@ -21,6 +21,18 @@ export function evaluateA(vec: Vec | null, reference?: SampleSet) {
   const thumbSide = dot(sub(p(4), p(5)), lateral) / width;
   if (thumbSide < 0.15) return reject("Dejá el pulgar al costado del índice, sin cruzarlo sobre el puño.", Math.min(similarity, 89));
   if (thumbSide > 1.8) return reject("Acercá el pulgar al costado del puño.", Math.min(similarity, 89));
+  const sideOf = (v: Vec) => {
+    const at = (i: number) => v.slice(i * 3, i * 3 + 3);
+    const axis = sub(at(5), at(17));
+    return dot(sub(at(4), at(5)), axis) / Math.max(1e-8, dot(axis, axis));
+  };
+  const quantile = (values: number[], q: number) => [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) * q)];
+  const sides = reference.samples.map(sideOf);
+  const thumbGap = (v: Vec) => Math.hypot(...[0, 1, 2].map(k => v[12 + k] - v[15 + k]));
+  const gaps = reference.samples.map(thumbGap);
+  if (thumbSide < quantile(sides, .1) - .15) return reject("Dejá el pulgar al lateral del puño, sin cruzarlo sobre los dedos.", Math.min(similarity, 89));
+  if (thumbSide > quantile(sides, .9) + .15 || thumbGap(vec) > quantile(gaps, .9) + .12)
+    return reject("Pegá el pulgar al lateral del puño, como en la nueva referencia de A.", Math.min(similarity, 89));
   if (similarity < 90) return reject("Compará con el avatar: ajustá el pulgar y la orientación del puño.", similarity);
   return { accepted: true, similarity, feedback: "La forma coincide con A. ¡Sostenela un segundo!" };
 }

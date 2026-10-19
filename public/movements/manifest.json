@@ -7,12 +7,12 @@
   "signs": [
     {
       "id": "a",
-      "name": "A",
+      "name": "A arreglado",
       "url": "/movements/a.json",
-      "frames": 93,
-      "fps": 30.011832622180787,
-      "width": 478,
-      "height": 850
+      "frames": 112,
+      "fps": 29.973238180196255,
+      "width": 576,
+      "height": 1024
     },
     {
       "id": "b",
@@ -67,6 +67,15 @@
       "fps": 30,
       "width": 576,
       "height": 1024
+    },
+    {
+      "id": "buenos-dias",
+      "name": "Buenos dias",
+      "url": "/movements/buenos-dias.json",
+      "frames": 219,
+      "fps": 60,
+      "width": 464,
+      "height": 832
     },
     {
       "id": "buenas-tardes",

@@ -2,7 +2,7 @@
 import cv2, mediapipe as mp, json, math
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-cap=cv2.VideoCapture(str(root/'references/videos/a.mp4'))
+cap=cv2.VideoCapture(str(root/'references/videos/a-corregida.mp4'))
 if not cap.isOpened(): raise RuntimeError('A source video missing')
 fps=cap.get(cv2.CAP_PROP_FPS) or 30
 samples=[]
@@ -16,7 +16,7 @@ with mp.tasks.vision.HandLandmarker.create_from_options(options) as model:
   ok,image=cap.read()
   if not ok: break
   result=model.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB,data=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)),round(i*1000/fps))
-  if 42<=i<=68 and result.hand_world_landmarks:
+  if 36<=i<=74 and result.hand_world_landmarks:
    selected=min(range(len(result.hand_landmarks)),key=lambda k:result.hand_landmarks[k][0].y)
    points=result.hand_world_landmarks[selected];handed=result.handedness[selected][0]
    if handed.score>=.8:
@@ -26,6 +26,6 @@ with mp.tasks.vision.HandLandmarker.create_from_options(options) as model:
   i+=1
 cap.release()
 if len(samples)<20: raise RuntimeError('Insufficient real reference detections')
-output={'version':'hand-world-v2','signId':'a','samples':samples,'meta':[{'senante':'Referencia del equipo: A.mp4, cuadros 42-68','dispositivo':'HandLandmarker float16/1 VIDEO; same task as browser','fecha':'2026-10-17'}]}
+output={'version':'hand-world-v2','signId':'a','samples':samples,'meta':[{'senante':'Referencia del equipo: A arreglado.mp4, cuadros 36-74','dispositivo':'HandLandmarker float16/1 VIDEO; same task as browser','fecha':'2026-10-18'}]}
 (root/'public/samples/a.json').write_text(json.dumps(output,separators=(',',':')),encoding='utf-8')
 print(f'Saved {len(samples)} A reference frames with camera-compatible task')

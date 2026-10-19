@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = path.resolve(__dirname, '../../avatar-senas');
 const target = path.resolve(__dirname, '../public/avatar');
-const clips = { a: 'A', b: 'b', c: 'C', adios: 'Adios', tu: 'Tu', gracias: 'Gracias', hola: 'Hola', 'buenas-tardes': 'Buenas Tardes' };
+const clips = { a: 'A arreglado', b: 'b', c: 'C', adios: 'Adios', tu: 'Tu', gracias: 'Gracias', hola: 'Hola', 'buenos-dias': 'Buenos dias', 'buenas-tardes': 'Buenas Tardes' };
 fs.mkdirSync(path.join(target, 'landmarks'), { recursive: true });
 fs.mkdirSync(path.join(target, 'avatares'), { recursive: true });
 fs.mkdirSync(path.resolve(__dirname, '../public/movements'), { recursive: true });

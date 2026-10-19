@@ -30,13 +30,13 @@ body.compact #demoControls{display:none}
 <body>
 <div id="panel">
   <b>Amanos, avatar de senas</b>
-  <label>Señas preparadas<select id="preset"><option value="A">A</option><option value="b">B</option><option value="Hola">HOLA</option><option value="C">C</option><option value="Adios">ADIÓS</option><option value="Tu">TÚ</option><option value="Gracias">GRACIAS</option><option value="Mucho gusto">MUCHO GUSTO</option><option value="Buenas Tardes">BUENAS TARDES · revisión</option></select></label>
+  <label>Señas preparadas<select id="preset"><option value="A arreglado">A · corregida</option><option value="b">B</option><option value="Hola">HOLA</option><option value="C">C</option><option value="Adios">ADIÓS</option><option value="Tu">TÚ</option><option value="Gracias">GRACIAS</option><option value="Mucho gusto">MUCHO GUSTO</option><option value="Buenos dias">BUENOS DÍAS · revisión</option><option value="Yo">YO · revisión</option><option value="Buenas Tardes">BUENAS TARDES · revisión</option></select></label>
   <button id="loadPreset">Cargar video y avatar</button>
   <div style="font-size:12px;color:#aaa">Compará con el original. Usá el control de cuadros para revisar cada postura.</div>
   <label>1. Avatar (.vrm, VRM 0.x)<input type="file" id="vrmFile" accept=".vrm"></label>
   <label>2. Sena (.json de extract_landmarks.py)<input type="file" id="jsonFile" accept=".json"></label>
   <label class="row"><input type="checkbox" id="useCorrections" checked> Correcciones de manos para la demo</label>
-  <label>Intensidad de corrección <input type="range" id="correctionStrength" min="0" max="1" step="0.05" value="1"></label>
+  <label>Intensidad de corrección <output id="correctionStrengthValue">100 %</output><input type="range" id="correctionStrength" min="0" max="1" step="0.05" value="1"></label>
   <label class="row"><input type="checkbox" id="handContact" checked> Contacto de manos en MUCHO GUSTO</label>
   <div style="font-size:12px;color:#aaa">Ajustes preparados para estos videos. Desmarcá correcciones para comparar con la captura original.</div>
   <button id="closeHands">Acercar manos</button>
@@ -72,7 +72,7 @@ body.compact #demoControls{display:none}
 <script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@0.6.11/lib/three-vrm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/kalidokit@1.1.5/dist/kalidokit.umd.js"></script>
-<script src="demo-corrections.js"></script>
+<script src="demo-corrections.js?v=hands-11"></script>
 <script>
 const $ = id => document.getElementById(id);
 const status = t => $('status').textContent = t;
@@ -125,6 +125,7 @@ $('fullView').onclick = () => { if (vrm) frameCamera(); };
 
 // ---------- estado ----------
 let vrm = null, data = null, playing = false, t = 0, recorder = null;
+let reviewBounds = null;
 let loadingPreset = false;
 let mode = 'video', keys = [], kt = 0;
 const BONES = Object.values(THREE.VRMSchema.HumanoidBoneName);
@@ -148,9 +149,19 @@ $('vrmFile').onchange = async e => {
   }, err => status('Error leyendo el archivo: ' + err));
 };
 
+function updateCorrectionLabel() {
+  $('correctionStrengthValue').textContent = Math.round(Number($('correctionStrength').value) * 100) + ' %';
+}
+function loadCorrectionStrength(name) {
+  $('correctionStrength').value = name === 'A' || name === 'A arreglado' ? '0.3' : '1';
+  updateCorrectionLabel();
+}
+$('correctionStrength').addEventListener('input', updateCorrectionLabel);
+
 $('jsonFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   data = JSON.parse(await f.text());
+  loadCorrectionStrength(data.name);
   // recorta las partes donde las manos estan abajo (inicio y final)
   const act = data.frames.map(fr => !!(fr.leftHand || fr.rightHand));
   const pad = Math.round(data.fps * 0.3);
@@ -182,13 +193,18 @@ $('loadPreset').onclick = async () => {
       vrm = await THREE.VRM.from(gltf); scene.add(vrm.scene);
       vrm.scene.rotation.y = Math.PI; saveRest(); frameCamera();
     }
+    reviewBounds = null; $('scrub').min = 0;
     data = loaded; smoothData(data.frames, Math.max(1, Math.round(data.fps / 30)));
+    loadCorrectionStrength(data.name);
     // Reset pose between signs; no rotations left over from the previous animation.
     for (const b of BONES) { const n = node(b); if (n && rest[n.name]) n.quaternion.copy(rest[n.name]); }
     keys = []; listKeys(); mode = 'video'; t = 0;
     $('scrub').max = data.frames.length - 1; $('scrub').value = 0;
     if (!document.body.classList.contains('embedded')) $('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';
     $('referenceVideo').load(); showFrame(0);
+    if (name === 'Yo' && !document.body.classList.contains('embedded')) {
+      reviewBounds = { start: 40, end: 155 }; $('scrub').min = 40; $('scrub').max = 155; $('scrub').value = 40; showFrame(40);
+    }
     $('play').textContent = 'Reproducir video';
     status(name + ': ' + data.frames.length + ' cuadros. Revisá la mano y la orientación antes de exportar.');
   } catch (e) { status('Error: ' + e.message); }
@@ -230,6 +246,8 @@ function rigHand(side, lm, riggedPose) {
 
 function relaxHand(side) {
   if ($('useIK').checked) {
+    const hand = node(side.toLowerCase() + 'Hand');
+    if (hand && rest[hand.name]) hand.quaternion.slerp(rest[hand.name], 0.1);
     for (const fi of FINGERS) for (const j of JOINTS) {
       const n = node(side.toLowerCase() + fi + j); if (n && rest[n.name]) n.quaternion.slerp(rest[n.name], 0.1);
     }
@@ -443,10 +461,11 @@ function tick() {
   if (vrm && playing && mode === 'video' && data) {
     t += dt * speed;
     let i = Math.floor(t * data.fps);
-    if (i >= data.frames.length) {
+    const first = reviewBounds?.start ?? 0, last = reviewBounds?.end ?? data.frames.length - 1;
+    if (i > last) {
       if (recorder) recorder.stop();
-      if ($('loop').checked && !recorder) { t = 0; i = 0; }
-      else { i = data.frames.length - 1; playing = false; $('play').textContent = 'Reproducir video'; }
+      if ($('loop').checked && !recorder) { t = first / data.fps; i = first; }
+      else { i = last; playing = false; $('play').textContent = 'Reproducir video'; }
     }
     $('scrub').value = i;
     applyFrame(data.frames[i]);
@@ -496,6 +515,13 @@ if (reviewPreset && Array.from($('preset').options).some(option => option.value 
   $('preset').value = reviewPreset;
   $('loadPreset').onclick().then(() => {
     if (!vrm || !data || data.name !== reviewPreset) return;
+    const params = new URLSearchParams(location.search);
+    if (params.has('from') || params.has('to')) {
+      const start = Number(params.get('from') ?? 0), end = Number(params.get('to') ?? data.frames.length - 1);
+      if (Number.isInteger(start) && Number.isInteger(end) && start >= 0 && start < end && end < data.frames.length) {
+        reviewBounds = { start, end }; $('scrub').min = start; $('scrub').max = end; $('scrub').value = start; showFrame(start);
+      }
+    }
     playing = true; $('play').textContent = 'Pausa';
     status(reviewPreset + ': vista previa para revisión. Compará el avatar con el video antes de integrarlo.');
   });
@@ -503,7 +529,7 @@ if (reviewPreset && Array.from($('preset').options).some(option => option.value 
 
 // Embedded lesson mode uses the same rig and authored corrections as the review player.
 const demoSign = new URLSearchParams(location.search).get('sign');
-const demoClips = {"a":"A","b":"b","c":"C","adios":"Adios","tu":"Tu","gracias":"Gracias","hola":"Hola","buenas-tardes":"Buenas Tardes"};
+const demoClips = {"a":"A arreglado","b":"b","c":"C","adios":"Adios","tu":"Tu","gracias":"Gracias","hola":"Hola","buenos-dias":"Buenos dias","buenas-tardes":"Buenas Tardes"};
 if (demoClips[demoSign]) {
   document.body.classList.add('embedded');
   if (new URLSearchParams(location.search).get('compact') === '1') document.body.classList.add('compact');

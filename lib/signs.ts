@@ -41,6 +41,10 @@ export const SIGNS: Sign[] = [
       configuracionMano: "Mano abierta con los dedos extendidos, como en el avatar",
       ubicacion: "Al costado de la cabeza; mantené ambos hombros visibles para evaluar la ubicación",
       orientacion: "Palma hacia adelante con los cambios de orientación del movimiento de referencia",
+    } : id === "buenos-dias" ? {
+      configuracionMano: "Iniciá con el pulgar arriba y los otros dedos cerrados; después formá ambos puños",
+      ubicacion: "Frente al cuerpo: cruzá los antebrazos y luego abrilos, como muestra el avatar",
+      orientacion: "Seguí la orientación de las manos durante el cruce y la apertura",
     } : id === "buenas-tardes" ? {
       configuracionMano: "Iniciá con el pulgar arriba y los otros dedos cerrados; después extendé la mano",
       ubicacion: "Frente al cuerpo, con el cambio de posición que muestra el avatar",

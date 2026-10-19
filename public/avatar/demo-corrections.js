@@ -2,9 +2,15 @@
 (function (root) {
   const profiles = {
     A: { range: [33, 42, 68, 80], pose: 'fist', side: 'Left' },
+    'A arreglado': { range: [23, 32, 77, 88], pose: 'fist', side: 'Left' },
     b: { range: [25, 35, 115, 130], pose: 'tucked', side: 'Right' },
     Hola: { range: [18, 26, 66, 76], pose: 'tucked', side: 'Left' },
     Tu: { range: [15, 24, 60, 72], pose: 'point', side: 'Left' },
+    Yo: { range: [55, 70, 125, 142], pose: 'point-self', side: 'Left' },
+    'Buenos dias': { range: [23, 33, 57, 73], pose: 'thumb-up', side: 'Left' },
+    'Buenos dias final': { range: [68, 80, 180, 198], pose: 'closed', side: 'Both' },
+    'Buenas Tardes': { range: [24, 36, 78, 90], pose: 'thumb-up', side: 'Left' },
+    'Buenas Tardes final': { range: [90, 103, 157, 177], pose: 'flat-down', side: 'Left' },
     Gracias: { range: [-2, 0, 81, 83], pose: 'flat', side: 'Both' },
     'Mucho gusto': { range: [10, 23, 88, 100], pose: 'grip', side: 'Both' },
   };
@@ -16,11 +22,14 @@
     return smooth((frame - a) / (b - a)) * (1 - smooth((frame - c) / (d - c)));
   }
   function angles(pose, finger) {
-    if (pose === 'flat' || pose === 'tucked' || (pose === 'point' && finger === 'Index')) return [0.04, 0.04, 0.04];
+    if (pose === 'flat' || pose === 'flat-down' || pose === 'tucked' || ((pose === 'point' || pose === 'point-self') && finger === 'Index')) return [0.04, 0.04, 0.04];
     if (pose === 'grip') return [0.85, 1.15, 0.65];
     return [1.35, 1.65, 0.95];
   }
   function apply({ THREE, node, rest, name, frame, mirrored, strength = 1, contact = true, pose, imageAspect = 1 }) {
+    restPassiveHand({ THREE, node, rest, name, frame, mirrored });
+    if (name === 'Buenos dias' && frame >= 73) name = 'Buenos dias final';
+    if (name === 'Buenas Tardes' && frame >= 90) name = 'Buenas Tardes final';
     const profile = profiles[name];
     const w = weight(name, frame) * Math.max(0, Math.min(1, strength));
     if (!profile || w <= 0) return;
@@ -32,17 +41,26 @@
       for (const finger of ['Index', 'Middle', 'Ring', 'Little']) {
         const values = profile.pose === 'grip'
           ? (side === (mirrored ? 'Right' : 'Left') ? [0.55, 1.45, 0.8] : [1.3, 1.55, 0.85])
+          : (profile.pose === 'fist' || profile.pose === 'thumb-up') && finger === 'Little' ? [1.4, 1.85, 1.1]
           : angles(profile.pose, finger);
         ['Proximal', 'Intermediate', 'Distal'].forEach((joint, i) => {
           const bone = node(prefix + finger + joint);
           if (!bone || !rest[bone.name]) return;
-          const q = rest[bone.name].clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sign * values[i]));
+          const q = rest[bone.name].clone();
+          if ((profile.pose === 'fist' || profile.pose === 'thumb-up') && finger === 'Little' && i === 0)
+            q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), .1));
+          q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sign * values[i]));
           bone.quaternion.slerp(q, w);
         });
       }
-      if (profile.pose === 'tucked') {
+      if (profile.pose === 'tucked' || profile.pose === 'closed') {
         foldThumb({ THREE, node, rest, prefix, weight: w });
       }
+      if (profile.pose === 'fist') foldThumb({ THREE, node, rest, prefix, weight: w, fist: true });
+      if (profile.pose === 'fist') {
+        orientPalm({ THREE, node, prefix, side, weight: w, forward: new THREE.Vector3(0, 1, 0) });
+      }
+      if (profile.pose === 'thumb-up') raiseThumb({ THREE, node, rest, prefix, weight: w });
       if (profile.pose === 'grip') {
         const hand = node(prefix + 'Hand'), middle = node(prefix + 'MiddleProximal');
         const index = node(prefix + 'IndexProximal'), little = node(prefix + 'LittleProximal');
@@ -74,7 +92,7 @@
           });
         }
       }
-      if (profile.pose === 'flat') {
+      if (profile.pose === 'flat' || profile.pose === 'flat-down') {
         // Occluded thumbs can twist even when the other four fingers are stable.
         for (const joint of ['Proximal', 'Intermediate', 'Distal']) {
           const thumb = node(prefix + 'Thumb' + joint);
@@ -96,14 +114,24 @@
           hand.updateMatrixWorld(true);
         }
       }
-      if (profile.pose === 'point') {
+      if (profile.pose === 'flat-down') {
+        lowerCapturedArm({ THREE, node, prefix, pose, imageAspect, mirrored, weight: w, drop: .025 });
+      }
+      if (profile.pose === 'point-self') {
+        foldThumb({ THREE, node, rest, prefix, weight: w });
+        placeSelfHand({ THREE, node, prefix, weight: w });
+      }
+      if (profile.pose === 'point' || profile.pose === 'point-self') {
         const hand = node(prefix + 'Hand');
         const base = node(prefix + 'IndexProximal');
         const tip = node(prefix + 'IndexDistal');
         if (hand && base && tip) {
           const direction = tip.getWorldPosition(new THREE.Vector3()).sub(base.getWorldPosition(new THREE.Vector3())).normalize();
-          // This reference points at the viewer, rather than raising an index vertically.
-          const delta = new THREE.Quaternion().setFromUnitVectors(direction, new THREE.Vector3(0, -0.03, 1).normalize());
+          const chest = node('upperChest') || node('chest');
+          const destination = profile.pose === 'point-self' && chest
+            ? chest.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, -.055, .14)).sub(base.getWorldPosition(new THREE.Vector3())).normalize()
+            : new THREE.Vector3(0, -0.03, 1).normalize();
+          const delta = new THREE.Quaternion().setFromUnitVectors(direction, destination);
           const world = hand.getWorldQuaternion(new THREE.Quaternion());
           const parent = hand.parent.getWorldQuaternion(new THREE.Quaternion());
           const target = parent.invert().multiply(delta.multiply(world));
@@ -114,6 +142,107 @@
     }
     if (name === 'Gracias') lowerThanks({ THREE, node, pose, imageAspect, mirrored, weight: w });
     if (profile.pose === 'grip' && contact) joinHands({ THREE, node, weight: w, mirrored });
+  }
+  function restPassiveHand({ THREE, node, rest, name, frame, mirrored }) {
+    // These clips use one hand. The other hand is below the camera or resting
+    // on the lap; absent landmarks must not leave a stale wrist from another frame.
+    let amount = ['A', 'A arreglado', 'Buenas Tardes'].includes(name) ? 1
+      : name === 'Buenos dias' ? 1 - smooth((frame - 55) / 15) : 0;
+    if (amount <= 0) return;
+    const prefix = mirrored ? 'left' : 'right', sign = mirrored ? 1 : -1;
+    const hand = node(prefix + 'Hand');
+    if (hand && rest[hand.name]) hand.quaternion.slerp(rest[hand.name], amount);
+    for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Little']) {
+      ['Proximal', 'Intermediate', 'Distal'].forEach((joint, i) => {
+        const bone = node(prefix + finger + joint);
+        if (!bone || !rest[bone.name]) return;
+        const q = rest[bone.name].clone();
+        if (finger !== 'Thumb') q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sign * [.12, .24, .12][i]));
+        bone.quaternion.slerp(q, amount);
+      });
+    }
+    if (hand) hand.updateMatrixWorld(true);
+  }
+  function orientPalm({ THREE, node, prefix, side, weight, forward }) {
+    const hand = node(prefix + 'Hand'), middle = node(prefix + 'MiddleProximal');
+    const index = node(prefix + 'IndexProximal'), little = node(prefix + 'LittleProximal');
+    if (!hand || !middle || !index || !little) return;
+    const basis = (f, l) => {
+      const x = f.clone().normalize(), z = new THREE.Vector3().crossVectors(x, l).normalize();
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
+    };
+    const local = basis(middle.position, index.position.clone().sub(little.position));
+    const desired = basis(forward, new THREE.Vector3(side === 'Left' ? -1 : 1, 0, 0));
+    hand.quaternion.slerp(hand.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(desired).multiply(local.invert()), weight);
+    hand.updateMatrixWorld(true);
+  }
+  function raiseThumb({ THREE, node, rest, prefix, weight }) {
+    const chain = ['Proximal', 'Intermediate', 'Distal'].map(j => node(prefix + 'Thumb' + j));
+    if (chain.some(b => !b || !rest[b.name])) return;
+    const original = chain.map(b => b.quaternion.clone());
+    chain.forEach(b => b.quaternion.copy(rest[b.name]));
+    chain[0].updateWorldMatrix(true, true);
+    // The metacarpal leaves the side of the fist; only the two visible phalanges
+    // point vertically. Straightening the entire chain stacks it over the index.
+    const basis = (axis, surface) => {
+      const x = axis.clone().normalize(), z = new THREE.Vector3().crossVectors(x, surface).normalize();
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
+    };
+    const aim = (bone, axis, direction) => {
+      const local = basis(axis, new THREE.Vector3(0, -1, 0));
+      const desired = basis(direction, new THREE.Vector3(0, 0, 1));
+      bone.quaternion.copy(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(desired).multiply(local.invert()));
+      bone.updateMatrixWorld(true);
+    };
+    aim(chain[0], chain[1].position, new THREE.Vector3(prefix === 'left' ? -.6 : .6, .8, 0));
+    aim(chain[1], chain[2].position, new THREE.Vector3(0, 1, 0));
+    aim(chain[2], chain[2].position.clone().multiplyScalar(.65), new THREE.Vector3(0, 1, 0));
+    chain.forEach((b, i) => b.quaternion.copy(original[i].slerp(b.quaternion.clone(), weight)));
+    chain[0].updateMatrixWorld(true);
+  }
+  function positionArm({ THREE, node, prefix, target, guide, weight }) {
+    const upper = node(prefix + 'UpperArm'), lower = node(prefix + 'LowerArm'), hand = node(prefix + 'Hand');
+    if (!upper || !lower || !hand) return;
+    const orientation = hand.getWorldQuaternion(new THREE.Quaternion());
+    const current = hand.getWorldPosition(new THREE.Vector3());
+    target = target.clone().lerp(current, 1 - weight);
+    const origin = upper.getWorldPosition(new THREE.Vector3()), direction = target.clone().sub(origin);
+    if (direction.lengthSq() < 1e-10) return;
+    const distance = direction.length(); direction.normalize();
+    const a = lower.position.length() * upper.getWorldScale(new THREE.Vector3()).x, b = hand.position.length() * lower.getWorldScale(new THREE.Vector3()).x;
+    const reach = Math.max(Math.abs(a - b) + 1e-5, Math.min(a + b - 1e-5, distance));
+    const projected = (a * a + reach * reach - b * b) / (2 * reach), height = Math.sqrt(Math.max(0, a * a - projected * projected));
+    const bend = guide.clone().sub(origin); bend.addScaledVector(direction, -bend.dot(direction));
+    if (bend.lengthSq() < 1e-10) { bend.set(0, -1, 0); bend.addScaledVector(direction, -bend.dot(direction)); }
+    const elbow = origin.clone().addScaledVector(direction, projected).addScaledVector(bend.normalize(), height);
+    const aim = (joint, axis, point) => {
+      const d = point.clone().sub(joint.getWorldPosition(new THREE.Vector3())).normalize().applyQuaternion(joint.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+      joint.quaternion.setFromUnitVectors(axis.clone().normalize(), d); joint.updateMatrixWorld(true);
+    };
+    aim(upper, lower.position, elbow); aim(lower, hand.position, origin.clone().addScaledVector(direction, reach));
+    hand.quaternion.copy(hand.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(orientation)); hand.updateMatrixWorld(true);
+  }
+  function placeSelfHand({ THREE, node, prefix, weight }) {
+    const chest = node('upperChest') || node('chest'), left = node('leftUpperArm'), right = node('rightUpperArm');
+    if (!chest || !left || !right) return;
+    const width = left.getWorldPosition(new THREE.Vector3()).distanceTo(right.getWorldPosition(new THREE.Vector3()));
+    const center = chest.getWorldPosition(new THREE.Vector3()), sign = prefix === 'left' ? 1 : -1;
+    positionArm({ THREE, node, prefix, weight,
+      target: center.clone().add(new THREE.Vector3(sign * width * .22, width * .3, width * .75)),
+      guide: center.clone().add(new THREE.Vector3(sign * width * .65, -width * .5, width * .2)) });
+  }
+  function lowerCapturedArm({ THREE, node, prefix, pose, imageAspect, mirrored, weight, drop }) {
+    if (!pose) return;
+    const left = prefix === 'left', indices = (mirrored ? !left : left) ? [11, 13, 15] : [12, 14, 16];
+    if (indices.some(i => !pose[i] || (pose[i].visibility ?? 1) < .5)) return;
+    const [s, e, w] = indices.map(i => pose[i]);
+    const vector = (a, b) => new THREE.Vector3((b.x - a.x) * imageAspect * (mirrored ? -1 : 1), a.y - b.y, (a.z - b.z) * imageAspect * .5).normalize();
+    const upper = node(prefix + 'UpperArm'), lower = node(prefix + 'LowerArm'), hand = node(prefix + 'Hand');
+    if (!upper || !lower || !hand) return;
+    const origin = upper.getWorldPosition(new THREE.Vector3());
+    const guide = origin.clone().addScaledVector(vector(s, e), lower.position.length());
+    const target = guide.clone().addScaledVector(vector(e, w), hand.position.length()); target.y -= drop;
+    positionArm({ THREE, node, prefix, target, guide, weight });
   }
   function thanksLocations(pose, imageAspect, mirrored = false) {
     if (!pose || [11, 12, 13, 14, 15, 16].some(i => !pose[i] || (pose[i].visibility ?? 1) < .5 || !Number.isFinite(pose[i].x) || !Number.isFinite(pose[i].y)) || !Number.isFinite(imageAspect) || imageAspect <= 0) return null;
@@ -169,7 +298,7 @@
       hand.updateMatrixWorld(true);
     }
   }
-  function foldThumb({ THREE, node, rest, prefix, weight }) {
+  function foldThumb({ THREE, node, rest, prefix, weight, fist = false }) {
     const hand = node(prefix + 'Hand'), middle = node(prefix + 'MiddleProximal');
     const index = node(prefix + 'IndexProximal'), little = node(prefix + 'LittleProximal');
     const chain = ['Proximal', 'Intermediate', 'Distal'].map(j => node(prefix + 'Thumb' + j));
@@ -183,10 +312,12 @@
     const normal = new THREE.Vector3().crossVectors(middle.position, index.position.clone().sub(little.position)).normalize();
     if (normal.dot(chain[0].position) < 0) normal.negate();
     const lateral = little.position.clone().sub(index.position).normalize();
-    const target = middle.position.clone().multiplyScalar(.7).addScaledVector(normal, width * .35).addScaledVector(lateral, width * .15);
+    const target = fist
+      ? index.position.clone().multiplyScalar(.98).addScaledVector(normal, width * .38).addScaledVector(lateral, -width * .2)
+      : middle.position.clone().multiplyScalar(.7).addScaledVector(normal, width * .35).addScaledVector(lateral, width * .15);
     hand.localToWorld(target);
     const tipOffset = chain[2].position.clone().multiplyScalar(.65);
-    const tipDirection = lateral.clone().transformDirection(hand.matrixWorld);
+    const tipDirection = (fist ? middle.position.clone().normalize() : lateral.clone()).transformDirection(hand.matrixWorld);
     const distalTarget = target.clone().addScaledVector(tipDirection, -tipOffset.length());
     const base = chain[0].getWorldPosition(new THREE.Vector3());
     const along = distalTarget.clone().sub(base), distance = along.length();
@@ -195,13 +326,25 @@
     const reach = Math.max(Math.abs(firstLength - secondLength) + 1e-5, Math.min(firstLength + secondLength - 1e-5, distance));
     const projected = (firstLength * firstLength + reach * reach - secondLength * secondLength) / (2 * reach);
     const height = Math.sqrt(Math.max(0, firstLength * firstLength - projected * projected));
-    const bend = new THREE.Vector3().crossVectors(normal.clone().transformDirection(hand.matrixWorld), along).normalize();
-    if (bend.dot(tipDirection) > 0) bend.negate();
+    const palmNormal = normal.clone().transformDirection(hand.matrixWorld);
+    const bend = fist ? palmNormal.addScaledVector(along, -palmNormal.dot(along)).normalize()
+      : new THREE.Vector3().crossVectors(palmNormal, along).normalize();
+    if (!fist && bend.dot(tipDirection) > 0) bend.negate();
     const elbow = base.clone().addScaledVector(along, projected).addScaledVector(bend, height);
     const aim = (joint, localAxis, direction) => {
       const parent = joint.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
       const localDirection = direction.clone().normalize().applyQuaternion(parent);
-      joint.quaternion.setFromUnitVectors(localAxis.clone().normalize(), localDirection);
+      if (fist) {
+        // Keep the broad thumb surface facing the palm normal, as in the
+        // opening greeting pose. An axis-only solve leaves its roll undefined.
+        const basis = (axis, surface) => {
+          const x = axis.clone().normalize();
+          const z = new THREE.Vector3().crossVectors(x, surface).normalize();
+          return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
+        };
+        const surface = normal.clone().transformDirection(hand.matrixWorld).applyQuaternion(parent);
+        joint.quaternion.copy(basis(localDirection, surface).multiply(basis(localAxis, new THREE.Vector3(0, -1, 0)).invert()));
+      } else joint.quaternion.setFromUnitVectors(localAxis.clone().normalize(), localDirection);
       joint.updateMatrixWorld(true);
     };
     aim(chain[0], chain[1].position, elbow.clone().sub(base));
@@ -245,7 +388,7 @@
       h.hand.updateMatrixWorld(true);
     });
   }
-  const api = { profiles, weight, angles, apply, foldThumb, lowerThanks, thanksLocations };
+  const api = { profiles, weight, angles, apply, foldThumb, lowerThanks, thanksLocations, raiseThumb, positionArm, placeSelfHand, lowerCapturedArm, restPassiveHand };
   if (typeof module !== 'undefined') module.exports = api;
   else root.DemoCorrections = api;
 })(typeof window === 'undefined' ? {} : window);

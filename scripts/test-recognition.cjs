@@ -92,3 +92,13 @@ test('B accepts captured samples and rejects a fist, spread fingers and an outwa
  assert.equal(evaluateB(null,r).accepted,false);
  assert.equal(evaluateB(r.samples[0]).accepted,false);
 });
+
+
+test('corrected A rejects a moderately separated thumb even before the old broad limit',()=>{
+ const {evaluateA}=load('lib/letter-a.ts',{'./classifier':c});
+ const reference=JSON.parse(fs.readFileSync('public/samples/a.json'));
+ const v=[...reference.samples[15]];
+ for(let k=0;k<3;k++)v[12+k]+=.24*(v[15+k]-v[51+k]);
+ assert.equal(evaluateA(v,reference).accepted,false);
+ assert.match(evaluateA(v,reference).feedback,/pulgar/);
+});
