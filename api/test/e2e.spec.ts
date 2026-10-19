@@ -28,7 +28,7 @@ describe("API e2e", () => {
     await request(http).post("/auth/demo").send({ email: "no-es-correo" }).expect(400);
     const r = await request(http).post("/auth/demo").send({ email: "Chris@Esen.edu.sv", name: "Chris" }).expect(201);
     token = r.body.accessToken;
-    expect(r.body.user).toEqual({ name: "Chris", email: "chris@esen.edu.sv" });
+    expect(r.body.user).toEqual({ name: "Chris", email: "chris@esen.edu.sv", isAdmin: false });
     expect((await request(http).get("/me").set(auth())).body.user.email).toBe("chris@esen.edu.sv");
   });
   it("google sin configurar o con token falso falla limpio", async () => {

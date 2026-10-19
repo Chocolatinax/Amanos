@@ -13,7 +13,7 @@ export type Progress = {
   /** Actividad por día local (YYYY-MM-DD). */
   activity?: Record<string, DayActivity>;
 };
-export type User = { name: string; email: string; avatar?: string };
+export type User = { name: string; email: string; avatar?: string; isAdmin?: boolean };
 
 export type LevelInfo = { n: number; name: string; min: number; next: number | null; progress: number };
 export type WeekDay = {

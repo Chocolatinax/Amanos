@@ -7,7 +7,7 @@ import Icon from "@/components/Icon";
 import PublicHeader from "@/components/PublicHeader";
 import ScoreRing from "@/components/ScoreRing";
 import { api, hasBackend } from "@/lib/api";
-import { SIGNS, UNITS } from "@/lib/signs";
+import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 
 const FEATURES = [
@@ -22,6 +22,7 @@ const STEPS = [
 ];
 
 export default function Landing() {
+  const { signs: SIGNS, units: UNITS } = useCatalog();
   const { user, ready } = useApp();
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);

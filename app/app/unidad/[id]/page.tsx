@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Icon from "@/components/Icon";
 import { XP_MASTERED, XP_SEEN } from "@/lib/gamification";
-import { getSign, getUnit, UNITS } from "@/lib/signs";
+import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 
 const OFFSETS = [0, -56, 56, 0, -56, 40, -24, 48]; // zigzag del camino (px)
 
 export default function UnitPage() {
+  const { units: UNITS, getSign, getUnit } = useCatalog();
   const { id } = useParams<{ id: string }>();
   const unit = getUnit(id);
   const { progress } = useApp();

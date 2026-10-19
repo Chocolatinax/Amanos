@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import SignVideo from "@/components/SignVideo";
 import { MOVEMENT_CHECK_IDS } from "@/lib/movement-check";
 import { CAMERA_EVALUATED_IDS } from "@/lib/human-evaluator";
-import { getSign, getUnit, SIGNS } from "@/lib/signs";
+import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 
 const TIPO = { estatica: "Seña estática", dinamica: "Seña con movimiento", ubicacion: "Estática con ubicación" } as const;
@@ -17,11 +17,12 @@ const MOVIMIENTO = {
 } as const;
 
 export default function SignPage() {
+  const { signs: SIGNS, getSign, getUnit, evaluationEnabled } = useCatalog();
   const { id } = useParams<{ id: string }>();
   const sign = getSign(id);
   const { progress, markSeen } = useApp();
   const [copied, setCopied] = useState(false);
-  useEffect(() => { if (sign) markSeen(sign.id); }, [sign, markSeen]);
+  useEffect(() => { if (sign) markSeen(sign.id); }, [sign?.id, markSeen]);
 
   if (!sign) return <div className="mx-auto max-w-3xl p-margin"><p>Seña no encontrada.</p><Link href="/app" className="text-primary underline">Volver al panel</Link></div>;
 
@@ -29,8 +30,8 @@ export default function SignPage() {
   const idx = SIGNS.findIndex(s => s.id === sign.id);
   const prev = SIGNS[idx - 1], next = SIGNS[idx + 1];
   const sp = progress.signs[sign.id];
-  const evaluable = CAMERA_EVALUATED_IDS.includes(sign.id);
-  const movementOnly = MOVEMENT_CHECK_IDS.includes(sign.id);
+  const evaluable = evaluationEnabled(sign.id) && CAMERA_EVALUATED_IDS.includes(sign.id);
+  const movementOnly = evaluationEnabled(sign.id) && MOVEMENT_CHECK_IDS.includes(sign.id);
   const share = async () => {
     const url = location.href;
     try { if (navigator.share) await navigator.share({ title: `Amanos · ${sign.glosa}`, url }); else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800); } } catch {}

@@ -6,6 +6,7 @@ import { useApp } from "@/lib/store";
 import { nextSign, practiceTarget } from "@/lib/nav";
 import BrandMark from "./BrandMark";
 import Icon from "./Icon";
+import { useCatalog } from '@/lib/catalog';
 
 export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "A";
@@ -18,7 +19,9 @@ export function Avatar({ name, src, size = 32 }: { name: string; src?: string; s
 
 export function useNavTargets() {
   const { progress } = useApp();
-  return { learn: `/app/unidad/${nextSign(progress).unidadId}`, practice: `/app/practica/${practiceTarget(progress).id}` };
+  const { signs } = useCatalog();
+  const next = nextSign(progress, signs), practice = practiceTarget(progress, signs);
+  return { learn: next ? `/app/unidad/${next.unidadId}` : '/app', practice: practice ? `/app/practica/${practice.id}` : '/app' };
 }
 export const isActive = (path: string, key: string) =>
   key === "inicio" ? path === "/" : key === "ruta" ? path === "/app" :
@@ -57,7 +60,7 @@ export default function AppHeader() {
   const paid = progress.plan === "pago";
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 w-full bg-surface/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-md">
+    <header style={{ paddingTop: 'env(safe-area-inset-top)' }} className="fixed left-0 right-0 top-0 z-50 w-full bg-surface/90 shadow-[0_1px_8px_rgba(0,0,0,0.04)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-space-md px-margin md:px-margin-tablet lg:px-margin-desktop">
         <BrandMark href={user ? "/app" : "/"} />
         <nav aria-label="Principal" className="hidden items-center gap-space-xs rounded-full bg-surface-container-low p-space-xs lg:flex">
@@ -82,6 +85,7 @@ export default function AppHeader() {
                   <div className="truncate font-body-sm text-body-sm text-on-surface-variant">{user?.email}</div>
                 </div>
                 <div className="my-space-xs h-px bg-outline-variant/40" />
+                {user?.isAdmin && <Link role="menuitem" href="/app/admin" className="flex items-center gap-2 rounded-xl px-3 py-3 font-semibold hover:bg-surface-container-low"><Icon name="admin_panel_settings" /> Administrar Amanos</Link>}
                 <Link role="menuitem" href="/app/paywall" className="flex items-center gap-space-sm rounded-xl px-space-sm py-space-sm font-label-md text-label-md hover:bg-surface-container-low"><Icon name="workspace_premium" className="text-lg" /> {paid ? "Mi membresía" : "Mejorar a Plus"}</Link>
                 <button role="menuitem" onClick={() => { logout(); router.replace("/login"); }} className="flex w-full items-center gap-space-sm rounded-xl px-space-sm py-space-sm font-label-md text-label-md text-error hover:bg-error-container/40"><Icon name="logout" className="text-lg" /> Salir</button>
               </div>
@@ -103,7 +107,7 @@ export function MobileDock() {
     </Link>
   );
   return (
-    <nav aria-label="Navegación móvil" className="fixed inset-x-0 bottom-3 z-40 mx-auto flex w-[min(92vw,420px)] items-center justify-between rounded-full bg-surface-container-lowest px-space-md py-space-xs shadow-[0_8px_24px_-4px_rgba(31,99,214,0.22)] ring-1 ring-outline-variant/40 lg:hidden">
+    <nav aria-label="Navegación móvil" className="fixed inset-x-0 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,420px)] items-center justify-between rounded-full bg-surface-container-lowest px-space-md py-space-xs shadow-[0_8px_24px_-4px_rgba(31,99,214,0.22)] ring-1 ring-outline-variant/40 lg:hidden">
       <Item href="/app" icon="home" label="Ruta" active={isActive(path, "ruta")} />
       <Item href={t.learn} icon="school" label="Aprender" active={isActive(path, "aprender")} />
       <Link href={t.practice} aria-label="Práctica con cámara" className="-mt-7 grid h-14 w-14 place-items-center rounded-full bg-primary-container text-on-primary shadow-lg ring-4 ring-surface"><Icon name="photo_camera" fill className="text-[28px]" /></Link>

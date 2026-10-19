@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test scripts/test-recognition.cjs scripts/test-gamification.cjs scripts/test-body-tracking.cjs scripts/test-new-signs.cjs scripts/test-human-evaluator.cjs scripts/test-movement-check.cjs scripts/test-buenas-tardes.cjs",
+    "test": "node --test scripts/test-recognition.cjs scripts/test-gamification.cjs scripts/test-body-tracking.cjs scripts/test-new-signs.cjs scripts/test-human-evaluator.cjs scripts/test-movement-check.cjs scripts/test-buenas-tardes.cjs scripts/test-admin-client.cjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

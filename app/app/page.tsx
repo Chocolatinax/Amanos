@@ -5,7 +5,7 @@ import ProgressRing from "@/components/ProgressRing";
 import SignVideo from "@/components/SignVideo";
 import { dailyChallenge } from "@/lib/daily";
 import { nextSign } from "@/lib/nav";
-import { getUnit, SIGNS, UNITS } from "@/lib/signs";
+import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 import { XP_MASTERED } from "@/lib/gamification";
 
@@ -17,13 +17,15 @@ const SOON = [
 ];
 
 export default function Dashboard() {
+  const { signs: SIGNS, units: UNITS, getUnit } = useCatalog();
   const { user, stats, progress, resetProgress, mode } = useApp();
-  const next = nextSign(progress);
+  const next = nextSign(progress, SIGNS);
+  if (!next) return <div className="p-6">Todavía no hay señas publicadas.</div>;
   const unit = getUnit(next.unidadId)!;
   const unitDone = unit.signIds.filter(id => progress.signs[id]?.mastered).length;
   const unitPct = Math.round((unitDone / unit.signIds.length) * 100);
   const idxInUnit = unit.signIds.indexOf(next.id) + 1;
-  const challenge = dailyChallenge(progress);
+  const challenge = dailyChallenge(progress, undefined, SIGNS);
   const remaining = Math.max(0, stats.dailyGoal - stats.todayCount);
   const goalPct = Math.min(100, Math.round((stats.todayCount / stats.dailyGoal) * 100));
   const allDone = stats.mastered === SIGNS.length;

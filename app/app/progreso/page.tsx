@@ -3,13 +3,14 @@ import Link from "next/link";
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { practiceTarget } from "@/lib/nav";
-import { SIGNS } from "@/lib/signs";
+import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 
 type Filter = "todas" | "dominadas" | "practica" | "nuevas";
 const TIPO = { estatica: "Estática", dinamica: "Con movimiento", ubicacion: "Con ubicación" } as const;
 
 export default function ProgressPage() {
+  const { signs: SIGNS } = useCatalog();
   const { stats, progress } = useApp();
   const [filter, setFilter] = useState<Filter>("todas");
   const lvl = stats.level;

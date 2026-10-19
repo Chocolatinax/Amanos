@@ -7,6 +7,10 @@ import { UserEntity } from "../entities";
 
 export const toUser = (u: UserEntity) => ({ name: u.name, email: u.email, ...(u.avatar ? { avatar: u.avatar } : {}) });
 export const CurrentUserId = createParamDecorator((_: unknown, ctx: ExecutionContext) => ctx.switchToHttp().getRequest().userId as string);
+export const CurrentSession = createParamDecorator((_: unknown, ctx: ExecutionContext) => ctx.switchToHttp().getRequest().session as Session);
+export type Session = { sub: string; provider?: string; googleSub?: string };
+export const ownerEmail = () => (process.env.ADMIN_EMAIL || 'codirrl@gmail.com').trim().toLowerCase();
+export const ownsAdmin = (u: UserEntity, s: Session) => s.provider === 'google' && !!s.googleSub && s.googleSub === u.googleSub && u.email.toLowerCase() === ownerEmail();
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -15,7 +19,22 @@ export class AuthGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const h: string = req.headers.authorization ?? "";
     if (!h.startsWith("Bearer ")) throw new UnauthorizedException("Falta el token.");
-    try { req.userId = (await this.jwt.verifyAsync(h.slice(7))).sub; } catch { throw new UnauthorizedException("Sesión inválida o vencida."); }
+    try {
+      req.session = await this.jwt.verifyAsync(h.slice(7));
+      if (typeof req.session.sub !== 'string' || !req.session.sub) throw new Error();
+      req.userId = req.session.sub;
+    } catch { throw new UnauthorizedException("Sesión inválida o vencida."); }
+    return true;
+  }
+}
+
+@Injectable()
+export class AdminGuard implements CanActivate {
+  constructor(@InjectRepository(UserEntity) private users: Repository<UserEntity>) {}
+  async canActivate(ctx: ExecutionContext) {
+    const s: Session | undefined = ctx.switchToHttp().getRequest().session;
+    const u = s?.sub ? await this.users.findOne({ where: { id: s.sub } }) : null;
+    if (!u || !s || !ownsAdmin(u, s)) throw new ForbiddenException('Entrá con la cuenta de Google administradora.');
     return true;
   }
 }
@@ -25,7 +44,10 @@ export class AuthService {
   private google = new OAuth2Client();
   constructor(@InjectRepository(UserEntity) private users: Repository<UserEntity>, private jwt: JwtService) {}
 
-  private async issue(u: UserEntity) { return { accessToken: await this.jwt.signAsync({ sub: u.id }), user: toUser(u) }; }
+  private async issue(u: UserEntity, provider = 'demo') {
+    const session: Session = { sub: u.id, provider, ...(provider === 'google' && u.googleSub ? { googleSub: u.googleSub } : {}) };
+    return { accessToken: await this.jwt.signAsync(session), user: { ...toUser(u), isAdmin: ownsAdmin(u, session) } };
+  }
 
   private async upsert(email: string, name: string, avatar?: string, googleSub?: string) {
     email = email.trim().toLowerCase();
@@ -48,13 +70,13 @@ export class AuthService {
     let payload;
     try { payload = (await this.google.verifyIdToken({ idToken: credential, audience: aud })).getPayload(); }
     catch { throw new UnauthorizedException("Token de Google inválido."); }
-    if (!payload?.email || payload.email_verified === false) throw new UnauthorizedException("Correo de Google no verificado.");
-    return this.issue(await this.upsert(payload.email, payload.name ?? payload.email.split("@")[0], payload.picture, payload.sub));
+    if (!payload?.email || payload.email_verified !== true || !payload.sub) throw new UnauthorizedException("Correo de Google no verificado.");
+    return this.issue(await this.upsert(payload.email, payload.name ?? payload.email.split("@")[0], payload.picture, payload.sub), 'google');
   }
 
-  async me(id: string) {
+  async me(id: string, session: Session = { sub: id }) {
     const u = await this.users.findOne({ where: { id } });
     if (!u) throw new UnauthorizedException("Usuario no encontrado.");
-    return { user: toUser(u) };
+    return { user: { ...toUser(u), isAdmin: ownsAdmin(u, session) } };
   }
 }

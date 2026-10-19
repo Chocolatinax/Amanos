@@ -32,7 +32,7 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
 
   useEffect(() => {
     if (!active) return;
-    let raf = 0, stream: MediaStream | null = null, stopped = false, lastVideoTime = -1;
+    let raf = 0, stream: MediaStream | null = null, stopped = false, lastVideoTime = -1, lastHandTime = -Infinity;
     let body: Awaited<ReturnType<typeof createBodyTracker>> | null = null;
     let bodyFrame: BodyFrame | null = null, lastBodyTime = -Infinity;
     setBodyStatus(trackBody ? "loading" : "off");
@@ -43,9 +43,10 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
     setStatus("loading");
     (async () => {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('CAMERA_SECURE_CONTEXT');
         const lm = await getHandLandmarker();
         if (stopped) return;
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } }, audio: false });
         if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         stream = s;
         const v = videoRef.current!; v.srcObject = s; await v.play();
@@ -57,7 +58,8 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
           if (v.readyState >= 2 && c) {
             if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
             const ts = performance.now();
-            if (v.currentTime !== lastVideoTime) {
+            if (v.currentTime !== lastVideoTime && ts - lastHandTime >= 40) {
+              lastHandTime = ts;
               lastVideoTime = v.currentTime;
               let res: HandLandmarkerResult;
               try { res = lm.detectForVideo(v, ts); }
@@ -82,10 +84,11 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
         if (stopped) return;
         setStatus("error");
         const msg = e instanceof Error ? e.message : "";
-        if (/NotAllowed|Permission/i.test(msg)) onError?.("No se dio permiso para usar la cámara. Revisá el candado de la barra de direcciones.");
+        if (msg === 'CAMERA_SECURE_CONTEXT') onError?.('Para usar la cámara desde el celular, abrí Amanos con HTTPS y permití el acceso a la cámara.');
+        else if (/NotAllowed|Permission/i.test(msg)) onError?.("No se dio permiso para usar la cámara. Revisá los permisos del sitio en tu navegador.");
         else if (/NotFound|DevicesNotFound/i.test(msg)) onError?.("No se encontró ninguna cámara.");
         else if (/NotReadable|TrackStart/i.test(msg)) onError?.("La cámara está en uso por otra app (Zoom, Teams, Meet). Cerrala y recargá.");
-        else onError?.("No se pudo cargar el modelo de manos. Revisá la conexión o corré `npm run get-model`." + (msg ? ` (${msg})` : ""));
+        else onError?.("No se pudo iniciar la cámara y la detección. Revisá la conexión y volvé a activarla.");
       }
     })();
     return () => {

@@ -1,4 +1,6 @@
 import { FEATURE_VERSION, type Vec } from "./features";
+import { loadReference } from './reference-source';
+import { hasBackend } from './api';
 
 export type SampleMeta = { senante?: string; dispositivo?: string; fecha?: string };
 export type SampleSet = { version: typeof FEATURE_VERSION; signId: string; samples: Vec[]; meta?: SampleMeta[] };
@@ -32,9 +34,9 @@ export function clearLocalSamples(signId: string) {
 export async function loadSamples(signId: string): Promise<SampleSet | null> {
   let fromFile: SampleSet | null = null;
   try {
-    const r = await fetch(`/samples/${signId}.json`, { cache: "no-store" });
-    if (r.ok) fromFile = parseSamples(await r.json(), signId);
-  } catch {}
+    fromFile = parseSamples(await loadReference(signId), signId);
+  } catch { return null; }
+  if (hasBackend()) return fromFile;
   const local = loadLocalSamples(signId);
   const samples = [...(fromFile?.samples ?? []), ...(local?.samples ?? [])];
   const set: SampleSet | null = samples.length ? { version: FEATURE_VERSION, signId, samples, meta: [...(fromFile?.meta ?? []), ...(local?.meta ?? [])] } : null;

@@ -6,17 +6,18 @@ import "@fontsource/be-vietnam-pro/700.css";
 import "material-symbols/outlined.css";
 import "./globals.css";
 import { AppProvider } from "@/lib/store";
+import { CatalogProvider } from '@/lib/catalog';
 
 export const metadata: Metadata = {
   title: "Amanos · Aprendé LESSA",
   description: "Aprendé la Lengua de Señas Salvadoreña con lecciones en video y práctica con tu cámara.",
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#1f63d6" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: 'cover', themeColor: "#1f63d6" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="min-h-dvh"><AppProvider>{children}</AppProvider></body>
+      <body className="min-h-dvh"><CatalogProvider><AppProvider>{children}</AppProvider></CatalogProvider></body>
     </html>
   );
 }

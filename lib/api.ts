@@ -1,5 +1,6 @@
 // Cliente de la API NestJS (carpeta /api). Si NEXT_PUBLIC_API_URL está vacío, la app corre 100% local.
 import type { AttemptResult, PlanId, Progress, Stats, User } from "./types";
+import type { AdminUsers, SignEdit, SignSettings } from './content';
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 export const hasBackend = () => Boolean(API_URL);
@@ -12,13 +13,18 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init: { method?: string; body?: unknown; token?: string | null } = {}): Promise<T> {
   let r: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
   try {
     r = await fetch(`${API_URL}${path}`, {
       method: init.method ?? "GET",
+      signal: controller.signal,
+      cache: 'no-store',
       headers: { ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}) },
       body: init.body ? JSON.stringify(init.body) : undefined,
     });
   } catch { throw new ApiError(0, "No se pudo conectar con el servidor."); }
+  finally { clearTimeout(timer); }
   if (!r.ok) {
     let msg = `Error ${r.status}`;
     try { const j = await r.json(); msg = Array.isArray(j.message) ? j.message.join(", ") : j.message ?? msg; } catch {}
@@ -32,6 +38,11 @@ export type AuthResponse = { accessToken: string; user: User };
 export type Plan = { id: PlanId; nombre: string; precio: number; moneda: string; intervalo: "mes" | "año"; etiqueta?: string };
 
 export const api = {
+  content: () => request<{ signs: SignSettings[] }>('/content'),
+  adminSigns: (t: string) => request<{ signs: SignSettings[] }>('/admin/signs', { token: t }),
+  adminSave: (t: string, id: string, body: SignEdit) => request<SignSettings>(`/admin/signs/${encodeURIComponent(id)}`, { method: 'PUT', body, token: t }),
+  adminReference: (t: string, id: string, revision: number, data: unknown) => request<SignSettings>(`/admin/signs/${encodeURIComponent(id)}/reference`, { method: 'PUT', body: { revision, data }, token: t }),
+  adminUsers: (t: string, page: number) => request<AdminUsers>(`/admin/users?page=${page}`, { token: t }),
   health: () => request<{ status: string }>("/health"),
   loginDemo: (email: string, name?: string) => request<AuthResponse>("/auth/demo", { method: "POST", body: { email, name } }),
   loginGoogle: (credential: string) => request<AuthResponse>("/auth/google", { method: "POST", body: { credential } }),

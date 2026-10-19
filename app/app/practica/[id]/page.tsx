@@ -17,7 +17,9 @@ import type { BodyFrame } from "@/lib/body-tracking";
 import { BODY_EVALUATED_IDS, CAMERA_EVALUATED_IDS, HumanEvaluator, observeHuman, parseHumanReference, type HumanReference } from "@/lib/human-evaluator";
 import { MovementTracker, observeMovement, parseMovementReference, type MovementReference, type MovementCheck } from "@/lib/movement-check";
 import { loadSamples, classify, HoldTracker, MIN_SAMPLES, type SampleSet } from "@/lib/classifier";
-import { getSign, SIGNS, STATIC_SIGN_IDS } from "@/lib/signs";
+import { STATIC_SIGN_IDS } from "@/lib/signs";
+import { useCatalog } from '@/lib/catalog';
+import { loadReference } from '@/lib/reference-source';
 import { THRESHOLD } from "@/lib/progress";
 import { useApp } from "@/lib/store";
 import type { AttemptResult } from "@/lib/types";
@@ -31,9 +33,12 @@ export default function PracticePage() {
 
 function Practice({ id }: { id: string }) {
   const router = useRouter();
+  const { signs: SIGNS, getSign, evaluationEnabled, settings } = useCatalog();
+  const evaluationAllowed = evaluationEnabled(id);
+  const referenceRevision = settings.find(s => s.id === id)?.revision ?? 0;
   const sign = getSign(id);
   const next = SIGNS[SIGNS.findIndex(s => s.id === id) + 1];
-  const { recordAttempt, stats } = useApp();
+  const { recordAttempt, stats, user } = useApp();
 
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +54,13 @@ function Practice({ id }: { id: string }) {
   const [holdMs, setHoldMs] = useState(0);
   const [showPoints, setShowPoints] = useState(true);
   const [refOpen, setRefOpen] = useState(true);
+  const [refExpanded, setRefExpanded] = useState(false);
+  const referenceDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const pause = () => { if (document.hidden) setConsent(false); };
+    document.addEventListener('visibilitychange', pause);
+    return () => document.removeEventListener('visibilitychange', pause);
+  }, []);
   const hold = useRef(new HoldTracker());
   const masteredRef = useRef(false);
   const setsRef = useRef<SampleSet[]>([]);
@@ -64,24 +76,28 @@ function Practice({ id }: { id: string }) {
   const movementReference = useRef<MovementReference | null>(null);
   const [movementCheck, setMovementCheck] = useState<MovementCheck | null>(null);
   const partial = id === "mucho-gusto";
-  const feedbackOnly = partial || id === "gracias";
+  const feedbackOnly = evaluationAllowed && (partial || id === "gracias");
   const dynamic = ["adios", "hola", "gracias", "buenas-tardes"].includes(id);
-  const evaluable = CAMERA_EVALUATED_IDS.includes(id);
+  const evaluable = evaluationAllowed && CAMERA_EVALUATED_IDS.includes(id);
   const requiredIds = STATIC_SIGN_IDS.includes(id) ? [id] : [];
   const missing = requiredIds.filter(sid => !sets?.some(s => s.signId === sid && s.samples.length >= MIN_SAMPLES));
-  const ready = id === "adios" || BODY_EVALUATED_IDS.includes(id) || partial ? sequenceReady : evaluable && sets !== null && missing.length === 0;
+  const ready = evaluationAllowed && (id === "adios" || BODY_EVALUATED_IDS.includes(id) || partial ? sequenceReady : evaluable && sets !== null && missing.length === 0);
 
   useEffect(() => {
     let cancelled = false;
+    setsRef.current = []; humanReference.current = null; movementReference.current = null; adiosReference.current = null;
+    hold.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); adios.current.reset();
+    setSequenceReady(false); setSets(null); setScore(0);
+    if (!evaluationAllowed) return;
     if (feedbackOnly) {
-      fetch(`/evaluation/${id}-movement.json`).then(r => r.ok ? r.json() : null).then(value => {
+      loadReference(id).then(value => {
         if (cancelled) return;
         movementReference.current = parseMovementReference(value, id);
         setSequenceReady(!!movementReference.current); setSets([]);
         if (!movementReference.current) setError("No se pudo cargar la comprobación. Recargá la página.");
       }).catch(() => { if (!cancelled) setError("No se pudo cargar la referencia. Revisá la conexión."); });
     } else if (BODY_EVALUATED_IDS.includes(id)) {
-      fetch(`/evaluation/${id}.json`).then(r => r.ok ? r.json() : null).then(value => {
+      loadReference(id).then(value => {
         if (cancelled) return;
         humanReference.current = parseHumanReference(value, id);
         const loaded = !!humanReference.current;
@@ -89,7 +105,7 @@ function Practice({ id }: { id: string }) {
         if (!loaded) setError("No se pudo cargar una referencia compatible. Recargá la página.");
       }).catch(() => { if (!cancelled) setError("No se pudo cargar la referencia. Revisá la conexión."); });
     } else if (id === "adios") {
-      fetch("/evaluation/adios.json").then(r => r.ok ? r.json() : null).then(value => {
+      loadReference(id).then(value => {
         if (cancelled) return;
         adiosReference.current = parseAdios(value); setSequenceReady(!!adiosReference.current); setSets([]);
         if (!adiosReference.current) setError("No se pudo cargar la referencia de ADIÓS. Recargá la página.");
@@ -100,7 +116,7 @@ function Practice({ id }: { id: string }) {
       setsRef.current = loaded; setSets(loaded);
     });
     return () => { cancelled = true; };
-  }, [evaluable, id, partial, feedbackOnly]);
+  }, [evaluable, id, partial, feedbackOnly, evaluationAllowed, referenceRevision]);
 
   const finish = useCallback((s: number) => {
     if (masteredRef.current) return;
@@ -112,6 +128,7 @@ function Practice({ id }: { id: string }) {
 
   const onFrame = useCallback((res: HandLandmarkerResult, ts: number) => {
     if (masteredRef.current) return;
+    if (!evaluationAllowed) { setHandVisible(res.landmarks.length > 0); setFeedback('Evaluación pausada. Podés practicar siguiendo el avatar.'); return; }
     if (feedbackOnly) {
       const observation = observeMovement(bodyFrame.current, ts);
       const check = movement.current.update(observation, movementReference.current);
@@ -141,32 +158,34 @@ function Practice({ id }: { id: string }) {
     const done = id === "adios" || humanReference.current?.mode === "sequence" ? accepted : hold.current.update(accepted, ts);
     setHoldMs(accepted ? Math.min(HOLD_MS, hold.current.held()) : 0);
     if (done) finish(similarity);
-  }, [finish, id, evaluable, partial, feedbackOnly]);
+  }, [finish, id, evaluable, partial, feedbackOnly, evaluationAllowed, getSign]);
 
   if (!sign) return <div className="mx-auto max-w-3xl p-margin"><p>Seña no encontrada.</p><Link href="/app" className="text-primary underline">Volver al panel</Link></div>;
 
   const reset = () => { hold.current.reset(); adios.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); setMovementCheck(null); bodyFrame.current = null; setScore(0); setHoldMs(0); setError(null); };
-  const activate = () => { startedAt.current = performance.now(); setConsent(true); };
+  const activate = () => { reset(); startedAt.current = performance.now(); setConsent(true); };
   const retry = () => { masteredRef.current = false; setMastered(false); setResult(null); reset(); startedAt.current = performance.now(); };
   const accepted = feedbackOnly ? movementCheck?.verified === true : score >= THRESHOLD;
   const holdPct = Math.round((holdMs / HOLD_MS) * 100);
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] min-h-[420px] w-full overflow-hidden bg-inverse-surface">
+    <div className="practice-screen relative h-dvh min-h-[420px] w-full overflow-hidden bg-inverse-surface" data-active={consent}>
+      <div className="practice-camera absolute inset-0">
       {!consent && (
         <div className="absolute inset-0 bg-gradient-to-br from-inverse-surface via-primary to-primary-container opacity-90">
           <div className="grid h-full place-items-center pb-40"><Icon name="sign_language" className="text-[120px] text-white/20" /></div>
         </div>
       )}
-      {consent && <HandCamera fill trackBody active={consent && !mastered} onBodyFrame={frame => { bodyFrame.current = frame; }} onFrame={onFrame} onError={setError} showLandmarks={showPoints} color={accepted ? "#62df7d" : "#4f8dff"} />}
+      {consent && <HandCamera fill trackBody active={consent && !mastered && !refExpanded} onBodyFrame={frame => { bodyFrame.current = frame; }} onFrame={onFrame} onError={setError} showLandmarks={showPoints} color={accepted ? "#62df7d" : "#4f8dff"} />}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/40" />
+      </div>
 
       {/* Barra superior */}
-      <div className="absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 md:inset-x-space-md md:top-space-md">
+      <div className="practice-toolbar absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 md:inset-x-space-md md:top-space-md">
         <div className="flex min-w-0 items-center gap-2 md:gap-space-sm">
           <Link href={`/app/sena/${sign.id}`} className="inline-flex h-11 items-center gap-space-xs rounded-full bg-surface/85 px-space-md font-label-md text-label-md text-on-surface backdrop-blur-md hover:bg-surface"><Icon name="arrow_back" className="text-lg" /> Salir</Link>
           {consent && <span className="hidden items-center gap-space-xs rounded-full bg-primary-container/90 md:inline-flex px-space-md py-space-xs font-label-sm text-label-sm uppercase text-on-primary backdrop-blur-md"><span className="h-2 w-2 animate-pulse rounded-full bg-secondary-fixed-dim" /> Cámara activa</span>}
-          <span className="rounded-full bg-surface/85 px-space-md py-space-xs font-label-md text-label-md backdrop-blur-md">{sign.glosa}</span>
+          <span className="min-w-0 truncate rounded-full bg-surface/85 px-space-md py-space-xs font-label-md text-label-md backdrop-blur-md">{sign.glosa}</span>
         </div>
         {consent && (
           <div className="flex shrink-0 items-center rounded-full bg-surface/85 p-1 backdrop-blur-md">
@@ -177,19 +196,19 @@ function Practice({ id }: { id: string }) {
       </div>
 
       {/* Avisos */}
-      <div className="absolute left-3 right-36 top-[76px] z-20 mx-auto flex max-h-[25dvh] max-w-2xl flex-col gap-2 overflow-y-auto md:inset-x-space-md md:top-20 md:max-h-none">
+      <div className="practice-notices absolute left-3 right-36 top-[76px] z-20 mx-auto flex max-h-[25dvh] max-w-2xl flex-col gap-2 overflow-y-auto md:inset-x-space-md md:top-20 md:max-h-none">
         {error && <p role="alert" className="rounded-xl bg-error-container px-space-md py-space-sm font-body-sm text-body-sm text-on-error-container">{error}</p>}
         {!evaluable && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
-          {partial ? "Comprobamos contacto y altura con cámara. Los dedos ocultos no se califican ni se marca la seña dominada." : feedbackOnly ? "Comprobamos el recorrido de ambas manos. La forma de los dedos sigue pendiente de revisión." : "Evaluación pendiente: faltan referencias compatibles de esta seña. Podés ensayarla sin calificación."}</p>}
+          {!evaluationAllowed ? 'La evaluación de esta seña está pausada. Podés ensayarla con el avatar.' : partial ? "Comprobamos contacto y altura con cámara. Los dedos ocultos no se califican ni se marca la seña dominada." : feedbackOnly ? "Comprobamos el recorrido de ambas manos. La forma de los dedos sigue pendiente de revisión." : "Evaluación pendiente: faltan referencias compatibles de esta seña. Podés ensayarla sin calificación."}</p>}
         {evaluable && !ready && requiredIds.length > 0 && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
           {sets === null ? "Cargando referencias…" : `Faltan referencias compatibles de ${missing.map(m => m.toUpperCase()).join(", ")}. La evaluación estará disponible al completar estas referencias.`}
-          {sets !== null && <Link href={`/capture?sign=${sign.id}`} className="ml-2 font-bold underline">Preparar referencias</Link>}
+          {sets !== null && user?.isAdmin && <Link href="/app/admin" className="ml-2 font-bold underline">Revisar referencias</Link>}
         </p>}
       </div>
 
       {/* Tarjeta de similitud */}
       {consent && (
-        <div className="absolute inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 md:inset-x-auto md:bottom-auto md:left-space-md md:top-1/3 md:w-[380px]">
+        <div className="practice-feedback absolute inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 md:inset-x-auto md:bottom-auto md:left-space-md md:top-1/3 md:w-[380px]">
           <div className="rounded-2xl border border-white/60 bg-surface-container-lowest/95 p-3 shadow-xl md:p-5 backdrop-blur-md">
             <div className="flex items-start justify-between gap-4">
               <div className={`flex min-w-0 items-center gap-2 text-sm font-semibold ${accepted ? "text-secondary" : "text-on-surface-variant"}`}>
@@ -214,12 +233,13 @@ function Practice({ id }: { id: string }) {
       )}
 
       {/* Video de referencia + consejo */}
-      <div className="absolute right-3 top-[76px] z-10 flex w-28 flex-col gap-2 md:right-space-md md:top-24 md:w-72">
+      <div className="practice-reference absolute right-3 top-[76px] z-10 flex w-28 flex-col gap-2 md:right-space-md md:top-24 md:w-72">
         <div className="overflow-hidden rounded-2xl bg-surface-container-lowest/95 shadow-xl backdrop-blur-md">
           <button onClick={() => setRefOpen(o => !o)} aria-expanded={refOpen} className="flex min-h-11 w-full items-center justify-between gap-1 bg-inverse-surface/80 px-2 py-2 font-label-sm text-label-sm text-white">
             <span className="flex items-center gap-1"><Icon name="visibility" className="text-sm" /> <span className="md:hidden">Avatar</span><span className="hidden md:inline">Avatar de referencia</span></span><Icon name={refOpen ? "expand_less" : "expand_more"} className="text-base" />
           </button>
           {refOpen && <SignVideo sign={sign} className="!rounded-none" />}
+          <button onClick={() => { reset(); setRefExpanded(true); referenceDialog.current?.showModal(); }} className="min-h-11 w-full bg-primary-fixed px-2 text-xs font-semibold text-primary md:hidden">Ver más grande</button>
         </div>
         <div className="hidden items-start gap-space-sm rounded-xl bg-surface-container-lowest/95 p-space-sm shadow-lg backdrop-blur-md md:flex">
           <Icon name="lightbulb" className="text-lg text-tertiary" />
@@ -228,7 +248,7 @@ function Practice({ id }: { id: string }) {
       </div>
 
       {/* Pie: permiso o barra de progreso */}
-      <div className="absolute inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-10 mx-auto max-w-3xl md:inset-x-space-md md:bottom-space-md">
+      <div className="practice-footer absolute inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-10 mx-auto max-w-3xl md:inset-x-space-md md:bottom-space-md">
         {!consent ? (
           <div className="flex flex-col gap-space-md rounded-2xl bg-surface-container-lowest p-space-md shadow-2xl md:flex-row md:items-center">
             <div className="hidden h-12 w-12 shrink-0 md:grid place-items-center rounded-full bg-primary-fixed text-primary"><Icon name="shield" fill /></div>
@@ -253,6 +273,10 @@ function Practice({ id }: { id: string }) {
       </div>
 
       {/* Seña dominada */}
+      <dialog ref={referenceDialog} aria-label={`Avatar de ${sign.glosa}`} onClose={() => { setRefExpanded(false); reset(); }} className="m-auto w-[min(92vw,480px)] max-h-[90dvh] overflow-y-auto rounded-2xl bg-surface-container-lowest p-4 backdrop:bg-black/60">
+        <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-bold">{sign.glosa}</h2><button onClick={() => referenceDialog.current?.close()} className="min-h-11 rounded-xl bg-primary-fixed px-4 font-semibold text-primary">Volver a cámara</button></div>
+        {refExpanded && <SignVideo sign={sign} variant="full" ratio="3 / 4" />}
+      </dialog>
       {mastered && <MasteredModal signGlosa={sign.glosa} score={finalScore} result={result} seconds={seconds} streak={stats.streak}
         next={next ? { id: next.id, glosa: next.glosa } : null} onRetry={retry} onNext={() => router.push(next ? `/app/sena/${next.id}` : "/app")} onHome={() => router.push("/app")} />}
     </div>

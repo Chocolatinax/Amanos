@@ -3,7 +3,8 @@ import { JwtModule } from "@nestjs/jwt";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { AuthGuard, AuthService } from "./auth/auth";
+import { AuthGuard, AuthService, AdminGuard } from "./auth/auth";
+import { AdminController, ContentController, ContentService } from './admin/admin';
 import { AuthController, ProgressController, SubscriptionController, SystemController, WaitlistController } from "./app.controllers";
 import { ENTITIES } from "./entities";
 import { ProgressService } from "./progress/progress.service";
@@ -21,7 +22,7 @@ export function dbOptions() {
     JwtModule.register({ global: true, secret: process.env.JWT_SECRET || "dev-secret-cambiame", signOptions: { expiresIn: "7d" } }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
   ],
-  controllers: [SystemController, AuthController, ProgressController, SubscriptionController, WaitlistController],
-  providers: [AuthService, AuthGuard, ProgressService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  controllers: [SystemController, AuthController, ProgressController, SubscriptionController, WaitlistController, AdminController, ContentController],
+  providers: [AuthService, AuthGuard, AdminGuard, ContentService, ProgressService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
 @Entity("users")
 export class UserEntity {
@@ -53,4 +53,13 @@ export class WaitlistEntity {
   @CreateDateColumn() createdAt: Date;
 }
 
-export const ENTITIES = [UserEntity, SignProgressEntity, DayActivityEntity, SubscriptionEntity, WaitlistEntity];
+@Entity('sign_settings')
+export class SignSettingsEntity {
+  @PrimaryColumn({ type: 'varchar' }) signId: string;
+  @Column({ type: 'text', default: '{}' }) content: string;
+  @Column({ type: 'text', nullable: true }) reference: string | null;
+  @Column({ type: 'integer', default: 1 }) revision: number;
+  @UpdateDateColumn() updatedAt: Date;
+}
+
+export const ENTITIES = [UserEntity, SignProgressEntity, DayActivityEntity, SubscriptionEntity, WaitlistEntity, SignSettingsEntity];

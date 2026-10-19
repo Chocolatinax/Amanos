@@ -27,3 +27,52 @@ body { @apply bg-background font-body-md text-body-md text-on-surface antialiase
 @keyframes confetti { 0% { transform: translateY(-10px) rotate(0); opacity: 1 } 100% { transform: translateY(420px) rotate(540deg); opacity: 0 } }
 .confetti { position: absolute; top: 0; width: 8px; height: 14px; border-radius: 2px; animation: confetti 2.4s ease-in forwards; }
 @media (prefers-reduced-motion: reduce) { .halo::before, .confetti, .pop { animation: none } }
+/* Camera layout: keep the full mirrored image clear of controls on phones. */
+@media (max-width: 767px), (max-width: 1024px) and (max-height: 550px) {
+  .practice-screen {
+    display: grid;
+    grid-template-columns: minmax(104px, 28%) minmax(0, 1fr);
+    grid-template-rows: auto minmax(200px, 1fr) auto auto auto;
+    grid-template-areas: "toolbar toolbar" "camera camera" "notices notices" "reference feedback" "footer footer";
+    gap: 8px;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 620px;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .practice-toolbar, .practice-notices, .practice-feedback, .practice-reference, .practice-footer {
+    position: static;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+  .practice-toolbar { grid-area: toolbar; }
+  .practice-camera { grid-area: camera; position: relative; inset: auto; min-height: 0; overflow: hidden; border-radius: 16px; }
+  .practice-camera video, .practice-camera canvas { object-fit: contain; }
+  .practice-notices { grid-area: notices; max-height: 96px; }
+  .practice-notices:empty { display: none; }
+  .practice-feedback { grid-area: feedback; align-self: start; }
+  .practice-feedback > div { padding: 12px; box-shadow: none; }
+  .practice-feedback [role="status"] { font-size: 13px; }
+  .practice-reference { grid-area: reference; align-self: start; }
+  .practice-reference > div + div { display: none; }
+  .practice-reference iframe { pointer-events: none; }
+  .practice-footer { grid-area: footer; }
+  .practice-footer button, .practice-toolbar button, .practice-toolbar a { min-height: 44px; }
+  .practice-screen[data-active="false"] { grid-template-rows: auto minmax(140px, 1fr) auto auto auto; }
+  .practice-screen[data-active="false"] .practice-reference { grid-column: 1 / -1; width: min(200px, 100%); justify-self: center; }
+}
+@media (orientation: landscape) and (max-width: 1024px) and (max-height: 550px) {
+  .practice-screen {
+    min-height: 370px;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 32%);
+    grid-template-rows: auto auto minmax(140px, 1fr) auto;
+    grid-template-areas: "toolbar toolbar" "camera notices" "camera feedback" "reference footer";
+  }
+  .practice-reference { width: 100px; }
+  .practice-screen[data-active="false"] { grid-template-rows: auto auto minmax(140px, 1fr) auto; }
+  .practice-screen[data-active="false"] .practice-reference { grid-column: 1; justify-self: start; width: 100px; }
+}

@@ -8,6 +8,7 @@ import { clearSession, getToken, getUser, nameFromEmail, saveSession } from "./a
 import { applyAttempt, applySeen, computeStats, localDay } from "./gamification";
 import { emptyProgress, loadProgress, resetProgress as resetLocal, saveProgress, setPlan as setPlanLocal, THRESHOLD } from "./progress";
 import { SIGNS } from "./signs";
+import { useCatalog } from './catalog';
 import type { AttemptResult, PlanId, Progress, Stats, User } from "./types";
 
 type Ctx = {
@@ -35,6 +36,7 @@ export const useApp = () => {
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { signs } = useCatalog();
   const mode: Ctx["mode"] = hasBackend() ? "api" : "local";
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +45,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [syncError, setSyncError] = useState(false);
   const progressRef = useRef(progress); progressRef.current = progress;
 
-  const stats = useMemo(() => serverStats ?? computeStats(progress, SIGNS.length), [serverStats, progress]);
+  const stats = useMemo(() => ({ ...(serverStats ?? computeStats(progress, signs.length)),
+    mastered: signs.filter(s => progress.signs[s.id]?.mastered).length,
+    seen: signs.filter(s => progress.signs[s.id]?.seen).length,
+  }), [serverStats, progress, signs]);
   const tokenOf = () => getToken();
 
   const adopt = useCallback((p: Progress, s?: Stats) => {
@@ -59,9 +64,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const u = getUser(); const t = getToken();
       if (!u || (mode === "api" && !t)) { if (u) clearSession(); setReady(true); return; }
-      setUser(u);
+      setUser({ ...u, isAdmin: false });
       if (mode === "local") { setProgress(loadProgress()); setReady(true); return; }
-      try { const e = await api.progress(t!); adopt(e.progress, e.stats); setSyncError(false); }
+      try {
+        const session = await api.me(t!); setUser(session.user); saveSession(session.user, t!);
+        const e = await api.progress(t!); adopt(e.progress, e.stats); setSyncError(false);
+      }
       catch (err) {
         if (err instanceof ApiError && err.status === 401) logout();
         else { setProgress(loadProgress()); setSyncError(true); } // servidor caído: seguimos con lo guardado
