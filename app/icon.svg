@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" font-size="84" text-anchor="middle" dominant-baseline="central">🖐️</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="128" fill="#4977CD"/><g transform="translate(56 56) scale(2)">
+<g stroke-linecap="round" stroke="#FFFFFF">
+<line x1="82" y1="104" x2="72" y2="26" stroke-width="26"></line>
+<line x1="128" y1="106" x2="150" y2="44" stroke-width="22"></line>
+<line x1="74" y1="146" x2="26" y2="104" stroke-width="24"></line>
+</g>
+<rect x="62" y="92" width="84" height="84" rx="28" fill="#FFFFFF"></rect>
+<rect x="86" y="90" width="20" height="36" rx="10" fill="#FFFFFF" stroke="#4977CD" stroke-width="3"></rect>
+<rect x="105" y="92" width="20" height="34" rx="10" fill="#FFFFFF" stroke="#4977CD" stroke-width="3"></rect>
+<path d="M150 30 C 141 24, 141 14, 146 14 C 148 14, 150 16, 150 18 C 150 16, 152 14, 154 14 C 159 14, 159 24, 150 30 Z" fill="#EF746D"></path>
+</g></svg>

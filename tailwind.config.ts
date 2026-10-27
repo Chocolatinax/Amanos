@@ -6,23 +6,43 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: { 50: "#eef7ff", 100: "#d9ecff", 500: "#2f7cf6", 600: "#1f64d6", 700: "#184fab" },
-        ok: "#16a34a",
-        warn: "#f59e0b",
-        "on-error-container": "#93000a", "tertiary-container": "#945d00", "on-surface": "#131b2e", surface: "#faf8ff",
-        "surface-container": "#eaedff", "on-error": "#ffffff", "on-secondary-fixed-variant": "#005320",
-        "primary-fixed-dim": "#b0c6ff", outline: "#737785", secondary: "#006e2d", tertiary: "#734700",
-        "on-primary-container": "#e3e9ff", "on-surface-variant": "#424653", "on-tertiary-container": "#ffe6cc",
-        "on-secondary-container": "#007230", "inverse-primary": "#b0c6ff", "on-tertiary-fixed": "#2a1700",
-        "surface-container-high": "#e2e7ff", "tertiary-fixed": "#ffddb8", "surface-dim": "#d2d9f4",
-        "secondary-container": "#7cf994", background: "#faf8ff", "surface-tint": "#0358cb", "primary-fixed": "#d9e2ff",
-        "primary-container": "#1f63d6", "secondary-fixed": "#7ffc97", "inverse-on-surface": "#eef0ff",
-        "tertiary-fixed-dim": "#ffb95f", "surface-bright": "#faf8ff", "outline-variant": "#c2c6d6", error: "#ba1a1a",
-        "secondary-fixed-dim": "#62df7d", "on-primary-fixed-variant": "#00419c", "surface-container-highest": "#dae2fd",
-        "on-tertiary": "#ffffff", "error-container": "#ffdad6", "on-secondary-fixed": "#002109", "on-secondary": "#ffffff",
-        "on-primary": "#ffffff", "surface-container-lowest": "#ffffff", primary: "#004bb0", "on-tertiary-fixed-variant": "#653e00",
-        "surface-container-low": "#f2f3ff", "inverse-surface": "#283044", "surface-variant": "#dae2fd",
-        "on-background": "#131b2e", "on-primary-fixed": "#001945",
+        // Paleta oficial Amanos: azul #4977CD (mano), coral #EF746D (mano), amarillo #FEDA84 (corazón).
+        // Los tonos de texto están oscurecidos lo justo para pasar contraste WCAG AA (4.5:1).
+        amanos: { blue: "#4977CD", coral: "#EF746D", yellow: "#FEDA84" },
+        coral: { DEFAULT: "#EF746D", strong: "#C2453E", soft: "#FDE6E4", fixed: "#FBC9C5" },
+        brand: { 50: "#F1F5FD", 100: "#E4ECFA", 500: "#4977CD", 600: "#4372C9", 700: "#3A65B8" },
+        ok: "#1B8050",
+        warn: "#E8A93A",
+
+        // Azul de marca
+        primary: "#3A65B8", "on-primary": "#ffffff",
+        "primary-container": "#4372C9", "on-primary-container": "#ffffff",
+        "primary-fixed": "#E4ECFA", "primary-fixed-dim": "#B9CCEF",
+        "on-primary-fixed": "#0F2552", "on-primary-fixed-variant": "#2C5299",
+        "inverse-primary": "#B9CCEF", "surface-tint": "#4977CD",
+
+        // Verde de éxito (seña aceptada, checks, metas). Suavizado para combinar con la marca.
+        secondary: "#1B8050", "on-secondary": "#ffffff",
+        "secondary-container": "#D3F1DF", "on-secondary-container": "#0F5A39",
+        "secondary-fixed": "#D3F1DF", "secondary-fixed-dim": "#7BD3A3",
+        "on-secondary-fixed": "#002111", "on-secondary-fixed-variant": "#0F5A39",
+
+        // Amarillo del corazón (rachas, logros). El texto usa ámbar oscuro para que se lea.
+        tertiary: "#8A5A00", "on-tertiary": "#ffffff",
+        "tertiary-container": "#B57A10", "on-tertiary-container": "#FFF4D6",
+        "tertiary-fixed": "#FFF1C9", "tertiary-fixed-dim": "#FEDA84",
+        "on-tertiary-fixed": "#2A1A00", "on-tertiary-fixed-variant": "#6B4700",
+
+        // Superficies con un toque del azul de marca
+        background: "#F7F9FE", "on-background": "#1C2333",
+        surface: "#F7F9FE", "surface-bright": "#F7F9FE", "surface-dim": "#D5DEEF",
+        "surface-container-lowest": "#ffffff", "surface-container-low": "#F1F5FD",
+        "surface-container": "#E9EFFA", "surface-container-high": "#E1E9F7", "surface-container-highest": "#D8E2F4",
+        "surface-variant": "#D8E2F4", "on-surface": "#1C2333", "on-surface-variant": "#4A5368",
+        "inverse-surface": "#232B3D", "inverse-on-surface": "#EEF2FB",
+        outline: "#737B8F", "outline-variant": "#C5CEDF",
+
+        error: "#BA1A1A", "on-error": "#ffffff", "error-container": "#FFDAD6", "on-error-container": "#93000A",
       },
       borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
       spacing: {
@@ -31,6 +51,8 @@ const config: Config = {
         "space-xs": "0.25rem", "space-lg": "1.5rem",
       },
       fontFamily: {
+        // Wordmark "amanos": letra redondeada y gruesa como en el logo oficial.
+        brand: ["Nunito Variable", "Nunito", "system-ui", "sans-serif"],
         "headline-sm": ["Plus Jakarta Sans Variable", "system-ui", "sans-serif"],
         "headline-xl": ["Plus Jakarta Sans Variable", "system-ui", "sans-serif"],
         "headline-xl-mobile": ["Plus Jakarta Sans Variable", "system-ui", "sans-serif"],

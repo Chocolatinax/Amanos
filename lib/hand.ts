@@ -38,7 +38,7 @@ export async function getHandLandmarker(): Promise<HandLandmarker> {
   return loading;
 }
 
-export function drawLandmarks(ctx: CanvasRenderingContext2D, result: HandLandmarkerResult, w: number, h: number, color = "#2f7cf6") {
+export function drawLandmarks(ctx: CanvasRenderingContext2D, result: HandLandmarkerResult, w: number, h: number, color = "#4977CD") {
   for (const lm of result.landmarks ?? []) {
   const C = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.fillStyle = "#fff";

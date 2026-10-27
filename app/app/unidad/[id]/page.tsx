@@ -69,7 +69,7 @@ export default function UnitPage() {
                 </span>
               </Link>
               {current && (
-                <div className="pop mt-space-sm w-64 rounded-xl bg-surface-container-lowest p-space-md shadow-[0_8px_24px_-4px_rgba(31,99,214,0.18)] ring-1 ring-primary-fixed">
+                <div className="pop mt-space-sm w-64 rounded-xl bg-surface-container-lowest p-space-md shadow-[0_8px_24px_-4px_rgba(73,119,205,0.18)] ring-1 ring-primary-fixed">
                   <div className="flex items-center justify-between"><span className="font-label-md text-label-md">{s.significado}</span><span className="rounded bg-primary-container px-2 py-0.5 font-label-sm text-[11px] text-on-primary">LESSA</span></div>
                   <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">{s.descripcion.configuracionMano}.</p>
                   <Link href={s.tipo === "estatica" ? `/app/practica/${s.id}` : `/app/sena/${s.id}`} className="mt-space-sm inline-flex items-center gap-1 font-label-sm text-label-sm text-primary">

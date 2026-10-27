@@ -15,13 +15,13 @@ body { @apply bg-background font-body-md text-body-md text-on-surface antialiase
 
 /* Botón con "labio" que se hunde al presionar (DESIGN.md: Tactile Button Press). */
 .btn-push { @apply inline-flex items-center justify-center gap-space-sm rounded-xl border-b-4 px-space-lg font-label-lg text-label-lg transition-all duration-100 active:translate-y-[2px] active:border-b-[1px] disabled:opacity-50 disabled:pointer-events-none; }
-.btn-push-primary { @apply btn-push h-12 border-[#16489C] bg-primary-container text-on-primary hover:brightness-110; }
-.btn-push-success { @apply btn-push h-12 border-[#004d1c] bg-secondary text-on-secondary hover:brightness-110; }
+.btn-push-primary { @apply btn-push h-12 border-[#2C5299] bg-primary-container text-on-primary hover:brightness-110; }
+.btn-push-success { @apply btn-push h-12 border-[#0F5A39] bg-secondary text-on-secondary hover:brightness-110; }
 .btn-push-ghost { @apply btn-push h-12 border-2 border-b-4 border-outline-variant bg-surface-container-lowest text-on-surface hover:border-primary-container hover:bg-primary-fixed/40; }
 .card-surface { @apply rounded-2xl bg-surface-container-lowest shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06),0_1px_3px_0_rgba(15,23,42,0.04)]; }
 
 @keyframes halo { 0% { transform: scale(1); opacity: .5 } 100% { transform: scale(1.5); opacity: 0 } }
-.halo::before { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: rgb(31 99 214 / .35); animation: halo 1.8s ease-out infinite; }
+.halo::before { content: ""; position: absolute; inset: 0; border-radius: 9999px; background: rgb(73 119 205 / .35); animation: halo 1.8s ease-out infinite; }
 @keyframes pop { 0% { transform: scale(.85); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 .pop { animation: pop .25s ease-out both; }
 @keyframes confetti { 0% { transform: translateY(-10px) rotate(0); opacity: 1 } 100% { transform: translateY(420px) rotate(540deg); opacity: 0 } }

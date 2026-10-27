@@ -95,7 +95,7 @@ function Capture() {
       ) : (
         <div className="space-y-3">
           <div className="relative">
-            <HandCamera onError={setError} active={active} onFrame={onFrame} color={recording ? "#ef4444" : "#2f7cf6"} />
+            <HandCamera onError={setError} active={active} onFrame={onFrame} color={recording ? "#ef4444" : "#4977CD"} />
             {countdown != null && <div className="absolute inset-0 grid place-items-center text-8xl font-black text-white drop-shadow">{countdown}</div>}
             {recording && <div className="absolute left-3 top-3 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white">REC {buffer.length}/{TARGET}</div>}
           </div>

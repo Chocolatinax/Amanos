@@ -192,7 +192,7 @@ export default function Dashboard() {
           {UNITS.map(u => {
             const done = u.signIds.filter(id => progress.signs[id]?.mastered).length;
             return (
-              <Link key={u.id} href={`/app/unidad/${u.id}`} className="card-surface flex flex-col gap-space-sm p-space-md transition-shadow hover:shadow-[0_8px_24px_-4px_rgba(31,99,214,0.18)]">
+              <Link key={u.id} href={`/app/unidad/${u.id}`} className="card-surface flex flex-col gap-space-sm p-space-md transition-shadow hover:shadow-[0_8px_24px_-4px_rgba(73,119,205,0.18)]">
                 <span className="font-label-sm text-label-sm uppercase text-on-surface-variant">Unidad {u.id}</span>
                 <span className="font-headline-sm text-headline-sm">{u.nombre.replace(/^Unidad \d+: /, "")}</span>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">{u.descripcion}</span>

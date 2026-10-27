@@ -1,4 +1,5 @@
 "use client";
+import BrandSymbol from "@/components/BrandLogo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -55,10 +56,10 @@ export default function Login() {
     <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-margin py-space-xl">
       <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary-fixed/50 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-secondary-container/30 blur-3xl" />
-      <div className="card-surface relative w-full max-w-[34rem] rounded-3xl p-space-lg shadow-[0_16px_48px_-12px_rgba(31,99,214,0.18)] md:p-space-xl">
+      <div className="card-surface relative w-full max-w-[34rem] rounded-3xl p-space-lg shadow-[0_16px_48px_-12px_rgba(73,119,205,0.18)] md:p-space-xl">
         <div className="flex flex-col items-center text-center">
-          <span className="grid h-16 w-16 place-items-center rounded-2xl bg-primary-fixed text-primary"><Icon name="sign_language" fill className="text-4xl" /></span>
-          <span className="mt-space-md inline-flex items-center gap-space-xs rounded-full bg-surface-container-low px-space-md py-space-xs font-label-sm text-label-sm uppercase text-primary"><span className="h-2 w-2 rounded-full bg-secondary" /> Amanos LESSA</span>
+          <BrandSymbol className="h-16 w-auto" />
+          <span className="mt-space-md inline-flex items-center gap-space-xs rounded-full bg-surface-container-low px-space-md py-space-xs font-label-sm text-label-sm uppercase text-primary"><span className="h-2 w-2 rounded-full bg-coral" /> Amanos LESSA</span>
           <h1 className="mt-space-md font-headline-lg text-headline-lg text-on-surface md:font-headline-xl md:text-headline-xl-mobile">¡Qué bueno verte de nuevo!</h1>
           <p className="mt-space-xs font-body-md text-body-md text-on-surface-variant">Ingresá a tu cuenta para continuar con tu racha de señas.</p>
         </div>

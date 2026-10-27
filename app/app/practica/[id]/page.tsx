@@ -283,7 +283,7 @@ function Practice({ id }: { id: string }) {
   );
 }
 
-const CONFETTI = Array.from({ length: 18 }, (_, i) => ({ left: `${(i * 37) % 100}%`, delay: `${(i % 6) * 0.15}s`, color: ["#1f63d6", "#7cf994", "#ffb95f", "#b0c6ff"][i % 4] }));
+const CONFETTI = Array.from({ length: 18 }, (_, i) => ({ left: `${(i * 37) % 100}%`, delay: `${(i % 6) * 0.15}s`, color: ["#4977CD", "#EF746D", "#FEDA84", "#7BD3A3"][i % 4] }));
 
 function MasteredModal({ signGlosa, score, result, seconds, streak, next, onRetry, onNext, onHome }: {
   signGlosa: string; score: number; result: AttemptResult | null; seconds: number; streak: number;

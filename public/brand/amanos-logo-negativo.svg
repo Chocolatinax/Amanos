@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320"><rect width="400" height="320" rx="40" fill="#4977CD"/>
+<g transform="translate(45 50)" stroke-linecap="round">
+<line x1="82" y1="104" x2="72" y2="26" stroke-width="26" stroke="#FFFFFF"></line>
+<line x1="128" y1="106" x2="150" y2="44" stroke-width="22" stroke="#FFFFFF"></line>
+<line x1="74" y1="146" x2="26" y2="104" stroke-width="24" stroke="#FFFFFF"></line>
+<rect x="62" y="92" width="84" height="84" rx="28" fill="#FFFFFF"></rect>
+<rect x="86" y="90" width="20" height="36" rx="10" fill="#FFFFFF" stroke="#4977CD" stroke-width="3"></rect>
+<rect x="105" y="92" width="20" height="34" rx="10" fill="#FFFFFF" stroke="#4977CD" stroke-width="3"></rect>
+</g>
+<g transform="translate(355 50) scale(-1 1)" stroke-linecap="round">
+<line x1="82" y1="104" x2="72" y2="26" stroke-width="26" stroke="#FEDA84"></line>
+<line x1="128" y1="106" x2="150" y2="44" stroke-width="22" stroke="#FEDA84"></line>
+<line x1="74" y1="146" x2="26" y2="104" stroke-width="24" stroke="#FEDA84"></line>
+<rect x="62" y="92" width="84" height="84" rx="28" fill="#FEDA84"></rect>
+<rect x="86" y="90" width="20" height="36" rx="10" fill="#FEDA84" stroke="#4977CD" stroke-width="3"></rect>
+<rect x="105" y="92" width="20" height="34" rx="10" fill="#FEDA84" stroke="#4977CD" stroke-width="3"></rect>
+</g>
+<path d="M200 82 C 182 70, 182 50, 192 50 C 196 50, 200 54, 200 58 C 200 54, 204 50, 208 50 C 218 50, 218 70, 200 82 Z" fill="#EF746D"></path>
+<text x="200" y="295" font-family="Nunito, 'Arial Rounded MT Bold', Arial, sans-serif" font-weight="900" text-anchor="middle" font-size="64" letter-spacing="-2" fill="#FFFFFF">amanos</text></svg>

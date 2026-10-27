@@ -79,7 +79,7 @@ export default function AppHeader() {
               <Avatar name={user?.name ?? "Amigo"} src={user?.avatar} />
             </button>
             {open && (
-              <div role="menu" className="pop absolute right-0 mt-space-sm w-60 rounded-2xl bg-surface-container-lowest p-space-sm shadow-[0_8px_24px_-4px_rgba(31,99,214,0.18)] ring-1 ring-outline-variant/40">
+              <div role="menu" className="pop absolute right-0 mt-space-sm w-60 rounded-2xl bg-surface-container-lowest p-space-sm shadow-[0_8px_24px_-4px_rgba(73,119,205,0.18)] ring-1 ring-outline-variant/40">
                 <div className="px-space-sm py-space-xs">
                   <div className="truncate font-label-md text-label-md">{user?.name}</div>
                   <div className="truncate font-body-sm text-body-sm text-on-surface-variant">{user?.email}</div>
@@ -107,7 +107,7 @@ export function MobileDock() {
     </Link>
   );
   return (
-    <nav aria-label="Navegación móvil" className="fixed inset-x-0 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,420px)] items-center justify-between rounded-full bg-surface-container-lowest px-space-md py-space-xs shadow-[0_8px_24px_-4px_rgba(31,99,214,0.22)] ring-1 ring-outline-variant/40 lg:hidden">
+    <nav aria-label="Navegación móvil" className="fixed inset-x-0 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,420px)] items-center justify-between rounded-full bg-surface-container-lowest px-space-md py-space-xs shadow-[0_8px_24px_-4px_rgba(73,119,205,0.22)] ring-1 ring-outline-variant/40 lg:hidden">
       <Item href="/app" icon="home" label="Ruta" active={isActive(path, "ruta")} />
       <Item href={t.learn} icon="school" label="Aprender" active={isActive(path, "aprender")} />
       <Link href={t.practice} aria-label="Práctica con cámara" className="-mt-7 grid h-14 w-14 place-items-center rounded-full bg-primary-container text-on-primary shadow-lg ring-4 ring-surface"><Icon name="photo_camera" fill className="text-[28px]" /></Link>
