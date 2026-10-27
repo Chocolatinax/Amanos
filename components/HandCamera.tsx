@@ -43,12 +43,15 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
     setStatus("loading");
     (async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error('CAMERA_SECURE_CONTEXT');
-        const lm = await getHandLandmarker();
-        if (stopped) return;
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('CAMERA_SECURE_CONTEXT');
+        // Primero la cámara (así el permiso se pide al toque) y después el modelo.
         const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24, max: 30 } }, audio: false });
         if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         stream = s;
+        let lm: Awaited<ReturnType<typeof getHandLandmarker>>;
+        try { lm = await getHandLandmarker(); }
+        catch (err) { console.error("[HandCamera] modelo", err); throw new Error('MODEL_LOAD'); }
+        if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         const v = videoRef.current!; v.srcObject = s; await v.play();
         if (stopped) { s.getTracks().forEach(t => t.stop()); return; }
         setStatus("running"); onReady?.();
@@ -83,11 +86,13 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
         stream?.getTracks().forEach(t => t.stop());
         if (stopped) return;
         setStatus("error");
-        const msg = e instanceof Error ? e.message : "";
-        if (msg === 'CAMERA_SECURE_CONTEXT') onError?.('Para usar la cámara desde el celular, abrí Amanos con HTTPS y permití el acceso a la cámara.');
-        else if (/NotAllowed|Permission/i.test(msg)) onError?.("No se dio permiso para usar la cámara. Revisá los permisos del sitio en tu navegador.");
-        else if (/NotFound|DevicesNotFound/i.test(msg)) onError?.("No se encontró ninguna cámara.");
-        else if (/NotReadable|TrackStart/i.test(msg)) onError?.("La cámara está en uso por otra app (Zoom, Teams, Meet). Cerrala y recargá.");
+        console.error("[HandCamera]", e);
+        const msg = e instanceof Error ? `${e.name} ${e.message}` : String(e);
+        if (/MODEL_LOAD/.test(msg)) onError?.("La cámara abrió, pero no cargó el modelo de detección. Revisá tu conexión y volvé a activarla.");
+        else if (/NotReadable|TrackStart|AbortError/i.test(msg)) onError?.("La cámara está en uso por otra app (Zoom, Teams, Meet) u otra pestaña. Cerrala y recargá.");
+        else if (/CAMERA_SECURE_CONTEXT/.test(msg)) onError?.('Para usar la cámara desde el celular, abrí Amanos con HTTPS y permití el acceso a la cámara.');
+        else if (/NotAllowed|Permission|SecurityError/i.test(msg)) onError?.("No se dio permiso para usar la cámara. Revisá los permisos del sitio en tu navegador.");
+        else if (/NotFound|DevicesNotFound|Overconstrained/i.test(msg)) onError?.("No se encontró ninguna cámara compatible.");
         else onError?.("No se pudo iniciar la cámara y la detección. Revisá la conexión y volvé a activarla.");
       }
     })();
