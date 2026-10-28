@@ -8,8 +8,9 @@ export default function BrandSymbol({ className = "h-9 w-auto" }: { className?: 
         <line x1="74" y1="146" x2="26" y2="104" strokeWidth="24" />
       </g>
       <rect x="62" y="92" width="84" height="84" rx="28" fill={color} />
-      <rect x="86" y="90" width="20" height="36" rx="10" fill={color} stroke="#FFFFFF" strokeWidth="3" />
-      <rect x="105" y="92" width="20" height="34" rx="10" fill={color} stroke="#FFFFFF" strokeWidth="3" />
+      {/* La separación entre dedos toma el color del fondo, así no queda una línea blanca en modo oscuro. */}
+      <rect x="86" y="90" width="20" height="36" rx="10" fill={color} strokeWidth="3" style={{ stroke: "rgb(var(--c-surface-container-lowest, 255 255 255))" }} />
+      <rect x="105" y="92" width="20" height="34" rx="10" fill={color} strokeWidth="3" style={{ stroke: "rgb(var(--c-surface-container-lowest, 255 255 255))" }} />
     </>
   );
   return (

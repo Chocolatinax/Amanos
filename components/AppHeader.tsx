@@ -6,6 +6,7 @@ import { useApp } from "@/lib/store";
 import { nextSign, practiceTarget } from "@/lib/nav";
 import BrandMark from "./BrandMark";
 import Icon from "./Icon";
+import ThemeToggle from "./ThemeToggle";
 import { useCatalog } from '@/lib/catalog';
 
 export function initials(name: string) {
@@ -70,6 +71,7 @@ export default function AppHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-space-sm">
+          <ThemeToggle />
           <StreakPill n={stats.streak} />
           <Link href="/app/paywall" className={`hidden items-center rounded-full px-space-sm py-space-xs font-label-sm text-label-sm transition-all sm:inline-flex ${paid ? "bg-secondary-container text-on-secondary-fixed-variant" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"}`}>
             {paid ? "Amanos Plus" : "Plan gratis"}
@@ -102,7 +104,7 @@ export function MobileDock() {
   const path = usePathname();
   const t = useNavTargets();
   const Item = ({ href, icon, label, active }: { href: string; icon: string; label: string; active: boolean }) => (
-    <Link href={href} aria-current={active ? "page" : undefined} className={`flex min-w-14 flex-col items-center gap-0.5 py-1 ${active ? "text-primary-container" : "text-on-surface-variant"}`}>
+    <Link href={href} aria-current={active ? "page" : undefined} className={`flex min-w-14 flex-col items-center gap-0.5 py-1 ${active ? "text-primary" : "text-on-surface-variant"}`}>
       <Icon name={icon} fill={active} /><span className="font-label-sm text-[11px]">{label}</span>
     </Link>
   );

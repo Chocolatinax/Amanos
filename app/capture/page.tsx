@@ -70,25 +70,25 @@ function Capture() {
   return (
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black">Captura de muestras <span className="text-sm font-normal text-slate-500">(herramienta interna)</span></h1>
-        <Link href="/app" className="text-sm text-slate-500">Ir a la app</Link>
+        <h1 className="text-2xl font-black">Captura de muestras <span className="text-sm font-normal text-on-surface-variant">(herramienta interna)</span></h1>
+        <Link href="/app" className="text-sm text-on-surface-variant">Ir a la app</Link>
       </div>
       <div className="card grid gap-3 md:grid-cols-3">
         <label className="text-sm">Seña
-          <select disabled={recording || countdown != null} value={signId} onChange={e => setSignId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2">
+          <select disabled={recording || countdown != null} value={signId} onChange={e => setSignId(e.target.value)} className="mt-1 w-full rounded-xl border border-outline-variant px-3 py-2">
             {SIGNS.filter(s => s.tipo === "estatica").map(s => <option key={s.id} value={s.id}>{s.glosa} · {s.significado}</option>)}
           </select>
         </label>
         <label className="text-sm">Señante
-          <input value={senante} onChange={e => setSenante(e.target.value)} placeholder="nombre" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" />
+          <input value={senante} onChange={e => setSenante(e.target.value)} placeholder="nombre" className="mt-1 w-full rounded-xl border border-outline-variant px-3 py-2" />
         </label>
         <div className="text-sm">Guardadas en este navegador
           <div className="mt-1 text-2xl font-black">{set?.samples.length ?? 0}</div>
         </div>
       </div>
-      <p className="text-sm text-slate-600">Captura de A, B y C. Las señas con movimiento o ubicación requieren otro tipo de referencia. Usá una sola mano y una postura revisada por el equipo LESSA.</p>
-      {error && <p role="alert" className="text-red-600">{error}</p>}
-      <p className="text-sm text-slate-600">{sign.descripcion.configuracionMano}. {sign.descripcion.orientacion}.</p>
+      <p className="text-sm text-on-surface-variant">Captura de A, B y C. Las señas con movimiento o ubicación requieren otro tipo de referencia. Usá una sola mano y una postura revisada por el equipo LESSA.</p>
+      {error && <p role="alert" className="text-error">{error}</p>}
+      <p className="text-sm text-on-surface-variant">{sign.descripcion.configuracionMano}. {sign.descripcion.orientacion}.</p>
 
       {!active ? (
         <button onClick={() => setActive(true)} className="btn-primary">Activar cámara</button>
@@ -99,14 +99,14 @@ function Capture() {
             {countdown != null && <div className="absolute inset-0 grid place-items-center text-8xl font-black text-white drop-shadow">{countdown}</div>}
             {recording && <div className="absolute left-3 top-3 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white">REC {buffer.length}/{TARGET}</div>}
           </div>
-          {!handVisible && <p className="text-sm text-slate-500">Mostrá la mano frente a la cámara.</p>}
+          {!handVisible && <p className="text-sm text-on-surface-variant">Mostrá la mano frente a la cámara.</p>}
           <div className="flex flex-wrap gap-2">
             <button onClick={start} disabled={recording || countdown != null} className="btn-primary">Grabar {TARGET} muestras</button>
             <button onClick={save} disabled={buffer.length === 0 || recording} className="btn-ghost">Guardar tanda ({buffer.length})</button>
             <button onClick={download} disabled={!set} className="btn-ghost">Descargar {signId}.json</button>
-            <button onClick={() => { clearLocalSamples(signId); setSet(null); }} disabled={!set || recording || countdown != null} className="btn-ghost text-red-600">Borrar</button>
+            <button onClick={() => { clearLocalSamples(signId); setSet(null); }} disabled={!set || recording || countdown != null} className="btn-ghost text-error">Borrar</button>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-on-surface-variant">
             Tip: mové un poco la mano (distancia, inclinación) durante la tanda para que las muestras tengan variedad. Grabá 2 o 3 tandas por persona.
             Las muestras guardadas acá ya se usan en la práctica. Para compartirlas con el equipo, descargá el JSON y ponelo en <code>public/samples/</code>.
           </p>

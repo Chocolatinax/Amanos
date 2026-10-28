@@ -21,6 +21,8 @@ body.compact #demoControls{display:none}
 #demoControls{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:8px;align-items:center;z-index:2}
 #demoControls button{background:#244c45;border-radius:24px;padding:10px 16px}
 #demoMessage{position:absolute;top:12px;left:12px;right:12px;color:#244c45;text-align:center}
+body.embedded.dark{background:#1a2131}
+body.dark #demoMessage{color:#dce6fa}
 </style>`);
 html = html.replace(/<\/script>\r?\n<\/body>/, `
 // Embedded lesson mode uses the same rig and authored corrections as the review player.
@@ -29,7 +31,10 @@ const demoClips = ${JSON.stringify(clips)};
 if (demoClips[demoSign]) {
   document.body.classList.add('embedded');
   if (new URLSearchParams(location.search).get('compact') === '1') document.body.classList.add('compact');
-  scene.background = new THREE.Color('#e6eeeb');
+  // The lesson page passes theme=dark so the avatar matches the app's dark mode.
+  const darkTheme = new URLSearchParams(location.search).get('theme') === 'dark';
+  if (darkTheme) document.body.classList.add('dark');
+  scene.background = new THREE.Color(darkTheme ? '#1a2131' : '#e6eeeb');
   controls.enableZoom = false; controls.enablePan = false;
   const bar = document.createElement('div'); bar.id = 'demoControls';
   const play = document.createElement('button'); play.textContent = 'Pausar';

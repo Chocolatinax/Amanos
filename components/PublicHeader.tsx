@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BrandMark from "./BrandMark";
+import ThemeToggle from "./ThemeToggle";
 
 export default function PublicHeader() {
   return (
@@ -12,6 +13,7 @@ export default function PublicHeader() {
           <a href="#waitlist" className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface">Lista de espera</a>
         </nav>
         <div className="flex items-center gap-space-sm">
+          <ThemeToggle />
           <Link href="/login" className="rounded-full px-space-md py-space-xs font-label-md text-label-md text-on-surface hover:bg-surface-container">Entrar</Link>
           <Link href="/login" className="btn-push-primary hidden h-10 !px-space-md sm:inline-flex">Empezar gratis</Link>
         </div>

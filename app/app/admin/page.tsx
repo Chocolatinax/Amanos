@@ -51,8 +51,8 @@ export default function AdminPage() {
   return <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-8">
     <div><span className="text-sm font-semibold text-primary">SOLO ADMINISTRACIÓN</span><h1 className="mt-1 text-3xl font-bold">Tu espacio de Amanos</h1><p className="mt-2 text-on-surface-variant">Actualizá las lecciones y sus referencias. Los cambios guardados se aplican a toda la app.</p></div>
     <div className="flex gap-2" aria-label="Secciones de administración">
-      <button disabled={busy} onClick={() => setTab('signs')} className={`rounded-xl px-5 py-3 font-semibold ${tab === 'signs' ? 'bg-primary text-white' : 'bg-surface-container'}`}>Señas y cámara</button>
-      <button disabled={busy} onClick={() => { setTab('users'); void loadUsers(1); }} className={`rounded-xl px-5 py-3 font-semibold ${tab === 'users' ? 'bg-primary text-white' : 'bg-surface-container'}`}>Usuarios</button>
+      <button disabled={busy} onClick={() => setTab('signs')} className={`rounded-xl px-5 py-3 font-semibold ${tab === 'signs' ? 'bg-primary-container text-on-primary' : 'bg-surface-container'}`}>Señas y cámara</button>
+      <button disabled={busy} onClick={() => { setTab('users'); void loadUsers(1); }} className={`rounded-xl px-5 py-3 font-semibold ${tab === 'users' ? 'bg-primary-container text-on-primary' : 'bg-surface-container'}`}>Usuarios</button>
     </div>
     {error && <p role="alert" className="rounded-xl bg-error-container p-4 text-on-error-container">{error}</p>}
     {message && <p role="status" className="rounded-xl bg-secondary-container p-4 text-on-secondary-container">{message}</p>}

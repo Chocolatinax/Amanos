@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root { color-scheme: light; }
+html.dark { color-scheme: dark; }
 html { scroll-behavior: smooth; }
 body { @apply bg-background font-body-md text-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed; }
 ::-webkit-scrollbar { display: none; }
@@ -10,8 +11,8 @@ body { @apply bg-background font-body-md text-body-md text-on-surface antialiase
 /* Clases heredadas: las usa /capture (herramienta interna). */
 .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition active:scale-[0.98] disabled:opacity-50; }
 .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
-.btn-ghost { @apply btn bg-white text-slate-800 ring-1 ring-slate-200 hover:bg-slate-100; }
-.card { @apply rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200; }
+.btn-ghost { @apply btn bg-surface-container-lowest text-on-surface ring-1 ring-outline-variant hover:bg-surface-container; }
+.card { @apply rounded-2xl bg-surface-container-lowest p-5 shadow-sm ring-1 ring-outline-variant; }
 
 /* Botón con "labio" que se hunde al presionar (DESIGN.md: Tactile Button Press). */
 .btn-push { @apply inline-flex items-center justify-center gap-space-sm rounded-xl border-b-4 px-space-lg font-label-lg text-label-lg transition-all duration-100 active:translate-y-[2px] active:border-b-[1px] disabled:opacity-50 disabled:pointer-events-none; }

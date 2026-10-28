@@ -65,7 +65,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-space-xs rounded-xl bg-surface-container-high p-1.5">
             <span className="hidden px-space-sm font-label-sm text-label-sm text-on-surface-variant md:inline">{paid ? "Plus activo" : "Plan gratis"}</span>
-            {!paid && <Link href="/app/paywall" className="flex items-center gap-space-xs rounded-lg bg-gradient-to-r from-primary to-primary-container px-space-md py-space-sm font-label-md text-label-md text-on-primary shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-95"><Icon name="star" fill className="text-lg" /> Mejorar a Plus</Link>}
+            {!paid && <Link href="/app/paywall" className="flex items-center gap-space-xs rounded-lg bg-gradient-to-r from-brand-700 to-primary-container px-space-md py-space-sm font-label-md text-label-md text-on-primary shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-95"><Icon name="star" fill className="text-lg" /> Mejorar a Plus</Link>}
           </div>
         </div>
       </section>
@@ -83,7 +83,7 @@ export default function Dashboard() {
               <div className="relative h-56 w-full shrink-0 overflow-hidden rounded-xl bg-surface-container-low sm:w-56">
                 <SignVideo sign={next} ratio="none" fit="cover" className="h-full w-full !rounded-xl" />
                 <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-inverse-surface/80 via-transparent to-transparent p-space-sm text-inverse-on-surface">
-                  <div className="flex items-center gap-space-xs"><Icon name="gesture" className="text-sm text-secondary-container" /><span className="font-label-sm text-label-sm font-semibold">{TIPO[next.tipo]}</span></div>
+                  <div className="flex items-center gap-space-xs"><Icon name="gesture" className="text-sm text-secondary-fixed-dim" /><span className="font-label-sm text-label-sm font-semibold">{TIPO[next.tipo]}</span></div>
                 </div>
               </div>
               <div className="flex w-full flex-1 flex-col justify-center gap-space-sm">

@@ -130,7 +130,7 @@ export default function ProgressPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary to-primary-container p-space-lg text-on-primary md:p-space-xl">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-700 to-primary-container p-space-lg text-on-primary md:p-space-xl">
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10" />
         <div className="relative flex flex-col items-start justify-between gap-space-md md:flex-row md:items-center">
           <div className="max-w-xl">

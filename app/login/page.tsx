@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
+import ThemeToggle from "@/components/ThemeToggle";
 import { GOOGLE_CLIENT_ID, hasBackend } from "@/lib/api";
 import { useApp } from "@/lib/store";
 
@@ -98,7 +99,8 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="mt-space-lg flex items-center justify-between font-label-md text-label-md">
+        <div className="mt-space-md flex justify-center"><ThemeToggle /></div>
+        <div className="mt-space-md flex items-center justify-between font-label-md text-label-md">
           <Link href="/" className="inline-flex items-center gap-space-xs text-on-surface-variant hover:text-on-surface"><Icon name="arrow_back" className="text-lg" /> Volver al inicio</Link>
           <button onClick={() => document.getElementById("email")?.focus()} className="text-primary hover:underline">Crear cuenta gratis</button>
         </div>

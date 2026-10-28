@@ -186,7 +186,7 @@ function Practice({ id }: { id: string }) {
     <div className="practice-screen relative h-dvh min-h-[420px] w-full overflow-hidden bg-inverse-surface" data-active={consent}>
       <div className="practice-camera absolute inset-0">
       {!consent && (
-        <div className="absolute inset-0 bg-gradient-to-br from-inverse-surface via-primary to-primary-container opacity-90">
+        <div className="absolute inset-0 bg-gradient-to-br from-inverse-surface via-brand-700 to-primary-container opacity-90">
           <div className="grid h-full place-items-center pb-40"><Icon name="sign_language" className="text-[120px] text-white/20" /></div>
         </div>
       )}

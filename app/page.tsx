@@ -78,7 +78,7 @@ export default function Landing() {
                   <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-error/80" /><i className="h-2.5 w-2.5 rounded-full bg-tertiary-fixed-dim" /><i className="h-2.5 w-2.5 rounded-full bg-secondary-fixed-dim" /></span>
                   <span className="font-label-sm text-label-sm text-on-surface-variant">Práctica con cámara · ejemplo</span>
                 </div>
-                <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-inverse-surface via-primary to-primary-container">
+                <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-inverse-surface via-brand-700 to-primary-container">
                   <Icon name="front_hand" fill className="text-[150px] text-white/25" />
                   <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 300" aria-hidden>
                     <g stroke="#9ec0ff" strokeWidth="3" fill="#fff"><path d="M200 240 L185 180 L172 130 M200 240 L215 175 L222 115 M200 240 L240 190 L262 150 M200 240 L160 200 L128 190" fill="none" />{[[200,240],[185,180],[172,130],[215,175],[222,115],[240,190],[262,150],[160,200],[128,190]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="5" />)}</g>
@@ -153,7 +153,7 @@ export default function Landing() {
 
         {/* Lista de espera */}
         <section id="waitlist" className="mx-auto max-w-5xl scroll-mt-20 px-margin py-space-xl md:px-margin-tablet">
-          <div className="rounded-3xl bg-gradient-to-br from-primary to-primary-container p-space-lg text-center text-on-primary shadow-2xl md:p-space-xl">
+          <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-primary-container p-space-lg text-center text-on-primary shadow-2xl md:p-space-xl">
             <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-space-md py-space-xs font-label-sm text-label-sm"><Icon name="celebration" className="text-base" /> Cupos tempranos gratuitos</span>
             <h2 className="mx-auto mt-space-sm max-w-2xl font-headline-lg text-headline-lg md:font-headline-xl md:text-headline-xl">Entrá a la lista de espera</h2>
             <p className="mx-auto mt-space-xs max-w-xl font-body-lg text-body-lg opacity-90">Dejá tu correo y te avisamos cuando abramos el piloto, con invitaciones a probar las señas nuevas primero.</p>
