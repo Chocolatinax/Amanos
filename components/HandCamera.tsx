@@ -17,16 +17,19 @@ type Props = {
   showLandmarks?: boolean;
   trackBody?: boolean;
   onBodyFrame?: (frame: BodyFrame) => void;
+  /** Mantiene la cámara abierta pero sin detectar (por ejemplo, con las instrucciones encima). */
+  paused?: boolean;
 };
 
 /** Cámara frontal espejada con los 21 puntos de la mano dibujados encima. Todo corre en el navegador. */
-export default function HandCamera({ active, onFrame, onError, onReady, color, className, fill = false, showLandmarks = true, trackBody = false, onBodyFrame }: Props) {
+export default function HandCamera({ active, onFrame, onError, onReady, color, className, fill = false, showLandmarks = true, trackBody = false, onBodyFrame, paused = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cbRef = useRef(onFrame); cbRef.current = onFrame;
   const colorRef = useRef(color); colorRef.current = color;
   const showRef = useRef(showLandmarks); showRef.current = showLandmarks;
   const bodyCb = useRef(onBodyFrame); bodyCb.current = onBodyFrame;
+  const pausedRef = useRef(paused); pausedRef.current = paused;
   const [bodyStatus, setBodyStatus] = useState<"off" | "loading" | "ready" | "error">("off");
   const [status, setStatus] = useState<"idle" | "loading" | "running" | "error">("idle");
 
@@ -58,7 +61,10 @@ export default function HandCamera({ active, onFrame, onError, onReady, color, c
         const loop = () => {
           if (stopped) return;
           const c = canvasRef.current;
-          if (v.readyState >= 2 && c) {
+          if (pausedRef.current && c) {
+            // Libera CPU/GPU para el avatar y borra los puntos viejos.
+            if (lastVideoTime !== -1) { c.getContext("2d")!.clearRect(0, 0, c.width, c.height); lastVideoTime = -1; }
+          } else if (v.readyState >= 2 && c) {
             if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
             const ts = performance.now();
             if (v.currentTime !== lastVideoTime && ts - lastHandTime >= 40) {

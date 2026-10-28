@@ -11,6 +11,8 @@ for (const file of ['viewer.html', 'demo-corrections.js', 'avatares/Amanos.vrm']
   fs.copyFileSync(path.join(source, file), path.join(target, file));
 }
 let html = fs.readFileSync(path.join(target, 'viewer.html'), 'utf8');
+// Libraries are served from public/avatar/vendor so a CDN outage cannot leave the avatar loading forever.
+html = html.replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/[^"]+\/([^"/]+\.js)/g, 'vendor/$1');
 html = html.replace("$('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';", "if (!document.body.classList.contains('embedded')) $('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';");
 html = html.replace('</style>', `
 body.embedded #panel,body.embedded #reference{display:none}
@@ -39,10 +41,15 @@ if (demoClips[demoSign]) {
   bar.append(play,replay,speedButton); stage.append(bar);
   const message = document.createElement('div'); message.id = 'demoMessage'; message.setAttribute('role','status');
   message.textContent = 'Cargando avatar…'; stage.append(message);
-  const observer = new MutationObserver(() => { if ($('status').textContent.startsWith('Error:')) message.textContent = 'No se pudo cargar el avatar. Volvé a intentar recargando la página.'; });
+  // The lesson page shows its own loading and retry state from these messages.
+  const notify = state => { if (parent !== window) parent.postMessage({ type: 'amanos-avatar', sign: demoSign, state }, location.origin); };
+  // Retina phones render 3-4x the pixels; the avatar does not need it next to the camera.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); resize();
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') notify('escape'); });
+  const observer = new MutationObserver(() => { if ($('status').textContent.startsWith('Error:')) { message.textContent = 'No se pudo cargar el avatar.'; notify('error'); } });
   observer.observe($('status'),{childList:true});
   $('preset').value = demoClips[demoSign];
-  $('loadPreset').onclick().then(() => { if (!data || !vrm) return; $('referenceVideo').removeAttribute('src'); $('referenceVideo').load(); message.textContent = ''; playing = true; resize(); });
+  $('loadPreset').onclick().then(() => { if (!data || !vrm) return; $('referenceVideo').removeAttribute('src'); $('referenceVideo').load(); message.textContent = ''; playing = true; resize(); notify('ready'); });
 }
 </script>\n</body>`);
 fs.writeFileSync(path.join(target, 'viewer.html'), html);

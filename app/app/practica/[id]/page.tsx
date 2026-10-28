@@ -17,7 +17,7 @@ import type { BodyFrame } from "@/lib/body-tracking";
 import { BODY_EVALUATED_IDS, CAMERA_EVALUATED_IDS, HumanEvaluator, observeHuman, parseHumanReference, type HumanReference } from "@/lib/human-evaluator";
 import { MovementTracker, observeMovement, parseMovementReference, type MovementReference, type MovementCheck } from "@/lib/movement-check";
 import { loadSamples, classify, HoldTracker, MIN_SAMPLES, type SampleSet } from "@/lib/classifier";
-import { STATIC_SIGN_IDS } from "@/lib/signs";
+import { STATIC_SIGN_IDS, type Sign } from "@/lib/signs";
 import { useCatalog } from '@/lib/catalog';
 import { loadReference } from '@/lib/reference-source';
 import { THRESHOLD } from "@/lib/progress";
@@ -25,6 +25,12 @@ import { useApp } from "@/lib/store";
 import type { AttemptResult } from "@/lib/types";
 
 const HOLD_MS = 1000;
+const TIPO = { estatica: "Seña estática", dinamica: "Seña con movimiento", ubicacion: "Estática con ubicación" } as const;
+const MOVIMIENTO = {
+  estatica: "Seña estática: mantené la mano quieta, sin balanceos.",
+  dinamica: "Seña con movimiento: seguí el recorrido que se ve en el avatar, de principio a fin.",
+  ubicacion: "Seña estática: lo que importa es dónde se ubica la mano respecto al cuerpo.",
+} as const;
 
 export default function PracticePage() {
   const { id } = useParams<{ id: string }>();
@@ -33,15 +39,21 @@ export default function PracticePage() {
 
 function Practice({ id }: { id: string }) {
   const router = useRouter();
-  const { signs: SIGNS, getSign, evaluationEnabled, settings } = useCatalog();
+  const { signs: SIGNS, getSign, getUnit, evaluationEnabled, settings } = useCatalog();
   const evaluationAllowed = evaluationEnabled(id);
   const referenceRevision = settings.find(s => s.id === id)?.revision ?? 0;
   const sign = getSign(id);
-  const next = SIGNS[SIGNS.findIndex(s => s.id === id) + 1];
-  const { recordAttempt, stats, user } = useApp();
+  const idx = SIGNS.findIndex(s => s.id === id);
+  const prev = idx > 0 ? SIGNS[idx - 1] : undefined, next = SIGNS[idx + 1];
+  const { recordAttempt, stats, user, markSeen } = useApp();
+  useEffect(() => { if (sign) markSeen(sign.id); }, [sign?.id, markSeen]);
 
-  const [consent, setConsent] = useState(false);
+  // La cámara arranca sola; las instrucciones se muestran encima hasta que la persona empieza.
+  const [consent, setConsent] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Separado del error de referencias: reactivar la cámara no debe ocultar una referencia que no cargó.
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [sets, setSets] = useState<SampleSet[] | null>(null);
   const [feedback, setFeedback] = useState("Mostrá una sola mano completa frente a la cámara.");
   const [score, setScore] = useState(0);
@@ -54,8 +66,6 @@ function Practice({ id }: { id: string }) {
   const [holdMs, setHoldMs] = useState(0);
   const [showPoints, setShowPoints] = useState(true);
   const [refOpen, setRefOpen] = useState(true);
-  const [refExpanded, setRefExpanded] = useState(false);
-  const referenceDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const pause = () => { if (document.hidden) setConsent(false); };
     document.addEventListener('visibilitychange', pause);
@@ -162,11 +172,15 @@ function Practice({ id }: { id: string }) {
 
   if (!sign) return <div className="mx-auto max-w-3xl p-margin"><p>Seña no encontrada.</p><Link href="/app" className="text-primary underline">Volver al panel</Link></div>;
 
-  const reset = () => { hold.current.reset(); adios.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); setMovementCheck(null); bodyFrame.current = null; setScore(0); setHoldMs(0); setError(null); };
+  const resetTrackers = () => { hold.current.reset(); adios.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); setMovementCheck(null); bodyFrame.current = null; setScore(0); setHoldMs(0); };
+  const reset = () => { resetTrackers(); setCameraError(null); };
   const activate = () => { reset(); startedAt.current = performance.now(); setConsent(true); };
+  // Conserva errores vigentes (cámara o referencia) y reabre la cámara si se apagó al cambiar de pestaña.
+  const closeGuide = () => { if (consent) resetTrackers(); else activate(); startedAt.current = performance.now(); setGuideOpen(false); };
   const retry = () => { masteredRef.current = false; setMastered(false); setResult(null); reset(); startedAt.current = performance.now(); };
   const accepted = feedbackOnly ? movementCheck?.verified === true : score >= THRESHOLD;
   const holdPct = Math.round((holdMs / HOLD_MS) * 100);
+  const unitLabel = getUnit(sign.unidadId)?.nombre.replace(/^Unidad \d+: /, "");
 
   return (
     <div className="practice-screen relative h-dvh min-h-[420px] w-full overflow-hidden bg-inverse-surface" data-active={consent}>
@@ -176,28 +190,29 @@ function Practice({ id }: { id: string }) {
           <div className="grid h-full place-items-center pb-40"><Icon name="sign_language" className="text-[120px] text-white/20" /></div>
         </div>
       )}
-      {consent && <HandCamera fill trackBody active={consent && !mastered && !refExpanded} onBodyFrame={frame => { bodyFrame.current = frame; }} onFrame={onFrame} onError={setError} showLandmarks={showPoints} color={accepted ? "#62df7d" : "#4f8dff"} />}
+      {consent && <HandCamera fill trackBody active={consent && !mastered} paused={guideOpen} onBodyFrame={frame => { bodyFrame.current = frame; }} onFrame={onFrame} onError={setCameraError} showLandmarks={showPoints} color={accepted ? "#62df7d" : "#4f8dff"} />}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/40" />
       </div>
 
       {/* Barra superior */}
       <div className="practice-toolbar absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 md:inset-x-space-md md:top-space-md">
         <div className="flex min-w-0 items-center gap-2 md:gap-space-sm">
-          <Link href={`/app/sena/${sign.id}`} className="inline-flex h-11 items-center gap-space-xs rounded-full bg-surface/85 px-space-md font-label-md text-label-md text-on-surface backdrop-blur-md hover:bg-surface"><Icon name="arrow_back" className="text-lg" /> Salir</Link>
+          <Link href={`/app/unidad/${sign.unidadId}`} className="inline-flex h-11 items-center gap-space-xs rounded-full bg-surface/85 px-space-md font-label-md text-label-md text-on-surface backdrop-blur-md hover:bg-surface"><Icon name="arrow_back" className="text-lg" /> Salir</Link>
           {consent && <span className="hidden items-center gap-space-xs rounded-full bg-primary-container/90 md:inline-flex px-space-md py-space-xs font-label-sm text-label-sm uppercase text-on-primary backdrop-blur-md"><span className="h-2 w-2 animate-pulse rounded-full bg-secondary-fixed-dim" /> Cámara activa</span>}
           <span className="min-w-0 truncate rounded-full bg-surface/85 px-space-md py-space-xs font-label-md text-label-md backdrop-blur-md">{sign.glosa}</span>
         </div>
-        {consent && (
-          <div className="flex shrink-0 items-center rounded-full bg-surface/85 p-1 backdrop-blur-md">
+        <div className="flex shrink-0 items-center rounded-full bg-surface/85 p-1 backdrop-blur-md">
+          <button onClick={() => setGuideOpen(true)} aria-label="Ver instrucciones de la seña" title="Instrucciones" className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-surface-container"><Icon name="menu_book" /></button>
+          {consent && <>
             <button onClick={() => setShowPoints(v => !v)} aria-pressed={showPoints} aria-label="Mostrar u ocultar las máscaras de cara, brazos y manos" title="Máscaras de cara, brazos y manos" className={`grid h-11 w-11 place-items-center rounded-full ${showPoints ? "bg-primary-fixed text-primary" : "text-on-surface-variant hover:bg-surface-container"}`}><Icon name="hub" /></button>
             <button onClick={() => { setConsent(false); reset(); }} aria-label="Desactivar cámara" title="Desactivar cámara" className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-surface-container"><Icon name="videocam_off" /></button>
-          </div>
-        )}
+          </>}
+        </div>
       </div>
 
       {/* Avisos */}
       <div className="practice-notices absolute left-3 right-36 top-[76px] z-20 mx-auto flex max-h-[25dvh] max-w-2xl flex-col gap-2 overflow-y-auto md:inset-x-space-md md:top-20 md:max-h-none">
-        {error && <p role="alert" className="rounded-xl bg-error-container px-space-md py-space-sm font-body-sm text-body-sm text-on-error-container">{error}</p>}
+        {[cameraError, error].filter(Boolean).map(msg => <p key={msg} role="alert" className="rounded-xl bg-error-container px-space-md py-space-sm font-body-sm text-body-sm text-on-error-container">{msg}</p>)}
         {!evaluable && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
           {!evaluationAllowed ? 'La evaluación de esta seña está pausada. Podés ensayarla con el avatar.' : partial ? "Comprobamos contacto y altura con cámara. Los dedos ocultos no se califican ni se marca la seña dominada." : feedbackOnly ? "Comprobamos el recorrido de ambas manos. La forma de los dedos sigue pendiente de revisión." : "Evaluación pendiente: faltan referencias compatibles de esta seña. Podés ensayarla sin calificación."}</p>}
         {evaluable && !ready && requiredIds.length > 0 && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
@@ -233,19 +248,20 @@ function Practice({ id }: { id: string }) {
       )}
 
       {/* Video de referencia + consejo */}
-      <div className="practice-reference absolute right-3 top-[76px] z-10 flex w-28 flex-col gap-2 md:right-space-md md:top-24 md:w-72">
+      {/* Mientras la guía está abierta el avatar vive ahí: un solo visor 3D a la vez. */}
+      {!guideOpen && <div className="practice-reference absolute right-3 top-[76px] z-10 flex w-28 flex-col gap-2 md:right-space-md md:top-24 md:w-72">
         <div className="overflow-hidden rounded-2xl bg-surface-container-lowest/95 shadow-xl backdrop-blur-md">
           <button onClick={() => setRefOpen(o => !o)} aria-expanded={refOpen} className="flex min-h-11 w-full items-center justify-between gap-1 bg-inverse-surface/80 px-2 py-2 font-label-sm text-label-sm text-white">
             <span className="flex items-center gap-1"><Icon name="visibility" className="text-sm" /> <span className="md:hidden">Avatar</span><span className="hidden md:inline">Avatar de referencia</span></span><Icon name={refOpen ? "expand_less" : "expand_more"} className="text-base" />
           </button>
           {refOpen && <SignVideo sign={sign} className="!rounded-none" />}
-          <button onClick={() => { reset(); setRefExpanded(true); referenceDialog.current?.showModal(); }} className="min-h-11 w-full bg-primary-fixed px-2 text-xs font-semibold text-primary md:hidden">Ver más grande</button>
+          <button onClick={() => setGuideOpen(true)} className="min-h-11 w-full bg-primary-fixed px-2 text-xs font-semibold text-primary md:hidden">Ver más grande</button>
         </div>
         <div className="hidden items-start gap-space-sm rounded-xl bg-surface-container-lowest/95 p-space-sm shadow-lg backdrop-blur-md md:flex">
           <Icon name="lightbulb" className="text-lg text-tertiary" />
           <p className="font-body-sm text-body-sm text-on-surface-variant">¿No agarra tu mano? <b className="text-on-surface">Mejorá la luz</b> o ponela a unos 40 cm de la cámara.</p>
         </div>
-      </div>
+      </div>}
 
       {/* Pie: permiso o barra de progreso */}
       <div className="practice-footer absolute inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-10 mx-auto max-w-3xl md:inset-x-space-md md:bottom-space-md">
@@ -253,11 +269,10 @@ function Practice({ id }: { id: string }) {
           <div className="flex flex-col gap-space-md rounded-2xl bg-surface-container-lowest p-space-md shadow-2xl md:flex-row md:items-center">
             <div className="hidden h-12 w-12 shrink-0 md:grid place-items-center rounded-full bg-primary-fixed text-primary"><Icon name="shield" fill /></div>
             <div className="flex-1">
-              <h1 className="font-headline-sm text-headline-sm">Hacé la seña “{sign.glosa}” frente a tu cámara</h1>
+              <h2 className="font-headline-sm text-headline-sm">La cámara está apagada</h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant">Tu video se procesa en tu dispositivo con el modelo local. <b className="text-on-surface">No se graba ni se envía a ningún servidor</b>; solo se guarda tu porcentaje.</p>
             </div>
             <div className="flex items-center gap-space-sm">
-              <Link href={`/app/sena/${sign.id}`} className="px-space-sm font-label-md text-label-md text-on-surface-variant hover:text-on-surface">Ahora no</Link>
               <button onClick={activate} className="btn-push-success">Activar cámara</button>
             </div>
           </div>
@@ -272,13 +287,92 @@ function Practice({ id }: { id: string }) {
         )}
       </div>
 
+      {guideOpen && !mastered && <GuideModal sign={sign} unitLabel={unitLabel} evaluable={evaluable} feedbackOnly={feedbackOnly} evaluationAllowed={evaluationAllowed} prev={prev} next={next} onStart={closeGuide} />}
+
       {/* Seña dominada */}
-      <dialog ref={referenceDialog} aria-label={`Avatar de ${sign.glosa}`} onClose={() => { setRefExpanded(false); reset(); }} className="m-auto w-[min(92vw,480px)] max-h-[90dvh] overflow-y-auto rounded-2xl bg-surface-container-lowest p-4 backdrop:bg-black/60">
-        <div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-bold">{sign.glosa}</h2><button onClick={() => referenceDialog.current?.close()} className="min-h-11 rounded-xl bg-primary-fixed px-4 font-semibold text-primary">Volver a cámara</button></div>
-        {refExpanded && <SignVideo sign={sign} variant="full" ratio="3 / 4" />}
-      </dialog>
       {mastered && <MasteredModal signGlosa={sign.glosa} score={finalScore} result={result} seconds={seconds} streak={stats.streak}
-        next={next ? { id: next.id, glosa: next.glosa } : null} onRetry={retry} onNext={() => router.push(next ? `/app/sena/${next.id}` : "/app")} onHome={() => router.push("/app")} />}
+        next={next ? { id: next.id, glosa: next.glosa } : null} onRetry={retry} onNext={() => router.push(next ? `/app/practica/${next.id}` : "/app")} onHome={() => router.push("/app")} />}
+    </div>
+  );
+}
+
+/** Seña e instrucciones en una ventana encima de la cámara; la detección queda en pausa mientras está abierta. */
+function GuideModal({ sign, unitLabel, evaluable, feedbackOnly, evaluationAllowed, prev, next, onStart }: {
+  sign: Sign; unitLabel?: string; evaluable: boolean; feedbackOnly: boolean; evaluationAllowed: boolean;
+  prev?: Sign; next?: Sign; onStart: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const start = useRef<HTMLButtonElement>(null);
+  const startRef = useRef(onStart); startRef.current = onStart;
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    // Todo lo que queda detrás de la ventana se vuelve inerte (como un <dialog> modal), también para el foco que sale del iframe.
+    const overlay = box.current?.parentElement;
+    const behind = overlay?.parentElement ? Array.from(overlay.parentElement.children).filter(el => el !== overlay && !el.hasAttribute("inert")) : [];
+    behind.forEach(el => el.setAttribute("inert", ""));
+    start.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") startRef.current(); };
+    // Con el foco dentro del avatar, Escape llega como mensaje del iframe.
+    const onMessage = (e: MessageEvent) => { if (e.origin === location.origin && e.data?.type === "amanos-avatar" && e.data.state === "escape") startRef.current(); };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("keydown", onKey); window.removeEventListener("message", onMessage);
+      behind.forEach(el => el.removeAttribute("inert"));
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+  const steps = [
+    { n: "01", icon: "back_hand", title: "Forma de la mano", text: sign.descripcion.configuracionMano },
+    { n: "02", icon: "screen_rotation", title: "Orientación", text: sign.descripcion.orientacion },
+    { n: "03", icon: "open_with", title: "Movimiento", text: MOVIMIENTO[sign.tipo] },
+    { n: "04", icon: "my_location", title: "Ubicación", text: sign.descripcion.ubicacion },
+  ];
+  const mode = !evaluationAllowed ? "La evaluación de esta seña está pausada. Podés ensayarla siguiendo el avatar."
+    : evaluable ? "Se califica con cámara: tu porcentaje es la similitud con las muestras de referencia."
+    : feedbackOnly ? (sign.id === "gracias" ? "La cámara comprueba el recorrido de ambas manos. La forma de los dedos aún requiere revisión; no marca la seña como dominada." : "La cámara comprueba la ubicación de las muñecas y el contacto. Los dedos ocultos aún requieren revisión; no marca la seña como dominada.")
+    : `Con la cámara podés ensayar esta seña, pero todavía no se califica: requiere evaluar ${sign.tipo === "dinamica" ? "el movimiento completo" : "la ubicación respecto al cuerpo"}.`;
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="guide-title" className="absolute inset-0 z-30 flex items-end justify-center bg-inverse-surface/55 p-2 backdrop-blur-[2px] sm:items-center sm:p-space-md">
+      <div ref={box} className="pop flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-surface-container-lowest shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <div className="flex-1 overflow-y-auto p-space-md md:p-space-lg">
+          <div className="grid gap-space-md md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-space-lg">
+            <div className="flex flex-col gap-space-xs">
+              <SignVideo sign={sign} variant="full" ratio="4 / 3" className="!rounded-2xl" />
+              <p className="px-1 text-xs text-on-surface-variant">Avatar de referencia del equipo. <span className="text-outline">Validado por señante nativo: pendiente.</span></p>
+            </div>
+            <div className="flex min-w-0 flex-col gap-space-sm">
+              <div className="flex flex-wrap items-center gap-space-xs">
+                <span className="rounded-full bg-secondary-container px-space-sm py-0.5 font-label-sm text-label-sm uppercase text-on-secondary-fixed-variant">{TIPO[sign.tipo]}</span>
+                {unitLabel && <span className="rounded-full bg-primary-fixed px-space-sm py-0.5 font-label-sm text-label-sm uppercase text-on-primary-fixed">{unitLabel}</span>}
+              </div>
+              <h2 id="guide-title" className="font-headline-lg text-headline-lg tracking-tight text-on-surface">{sign.glosa}</h2>
+              <p className="font-body-md text-body-md text-on-surface-variant">{sign.significado}.</p>
+              <ol className="grid gap-2 sm:grid-cols-2">
+                {steps.map(s => (
+                  <li key={s.n} className="flex gap-2 rounded-xl bg-surface-container-low p-space-sm">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-container text-primary"><Icon name={s.icon} className="text-lg" /></span>
+                    <div className="min-w-0"><h3 className="font-label-md text-label-md text-on-surface">{s.title}</h3><p className="text-xs leading-snug text-on-surface-variant">{s.text}</p></div>
+                  </li>
+                ))}
+              </ol>
+              {sign.erroresComunes.length > 0 && <div className="rounded-xl bg-tertiary-fixed/50 p-space-sm text-on-tertiary-fixed">
+                <h3 className="flex items-center gap-1 font-label-md text-label-md"><Icon name="warning" className="text-base text-tertiary" /> Errores comunes</h3>
+                <ul className="mt-1 list-disc pl-5 text-xs leading-snug">{sign.erroresComunes.map(e => <li key={e}>{e}.</li>)}</ul>
+              </div>}
+              <p className="flex gap-2 text-xs leading-snug text-on-surface-variant"><Icon name={evaluable ? "photo_camera" : "info"} className="shrink-0 text-base text-primary" />{mode}</p>
+              {(prev || next) && <nav aria-label="Otras señas" className="flex flex-wrap gap-space-xs">
+                {prev && <Link href={`/app/practica/${prev.id}`} className="rounded-full bg-surface-container px-space-md py-space-xs font-label-md text-label-md hover:bg-surface-container-high">← {prev.glosa}</Link>}
+                {next && <Link href={`/app/practica/${next.id}`} className="rounded-full bg-surface-container px-space-md py-space-xs font-label-md text-label-md hover:bg-surface-container-high">{next.glosa} →</Link>}
+              </nav>}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-space-sm border-t border-outline-variant/40 p-space-md sm:flex-row sm:items-center">
+          <p className="flex-1 text-xs text-on-surface-variant"><Icon name="shield" className="mr-1 align-middle text-sm text-primary" />Tu video se procesa en tu dispositivo: <b className="text-on-surface">no se graba ni se envía</b>.</p>
+          <button ref={start} onClick={onStart} className="btn-push-primary h-12 sm:min-w-[220px]"><Icon name="videocam" /> Empezar a practicar</button>
+        </div>
+      </div>
     </div>
   );
 }

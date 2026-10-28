@@ -67,11 +67,11 @@ body.compact #demoControls{display:none}
 <div id="reference"><p>Video original · misma línea de tiempo</p><video id="referenceVideo" muted playsinline></video><p id="frameInfo">Elegí una seña y cargala.</p></div>
 <div id="stage"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.133.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@0.6.11/lib/three-vrm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/kalidokit@1.1.5/dist/kalidokit.umd.js"></script>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="vendor/three-vrm.js"></script>
+<script src="vendor/kalidokit.umd.js"></script>
 <script src="demo-corrections.js?v=hands-11"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -545,10 +545,15 @@ if (demoClips[demoSign]) {
   bar.append(play,replay,speedButton); stage.append(bar);
   const message = document.createElement('div'); message.id = 'demoMessage'; message.setAttribute('role','status');
   message.textContent = 'Cargando avatar…'; stage.append(message);
-  const observer = new MutationObserver(() => { if ($('status').textContent.startsWith('Error:')) message.textContent = 'No se pudo cargar el avatar. Volvé a intentar recargando la página.'; });
+  // The lesson page shows its own loading and retry state from these messages.
+  const notify = state => { if (parent !== window) parent.postMessage({ type: 'amanos-avatar', sign: demoSign, state }, location.origin); };
+  // Retina phones render 3-4x the pixels; the avatar does not need it next to the camera.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); resize();
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') notify('escape'); });
+  const observer = new MutationObserver(() => { if ($('status').textContent.startsWith('Error:')) { message.textContent = 'No se pudo cargar el avatar.'; notify('error'); } });
   observer.observe($('status'),{childList:true});
   $('preset').value = demoClips[demoSign];
-  $('loadPreset').onclick().then(() => { if (!data || !vrm) return; $('referenceVideo').removeAttribute('src'); $('referenceVideo').load(); message.textContent = ''; playing = true; resize(); });
+  $('loadPreset').onclick().then(() => { if (!data || !vrm) return; $('referenceVideo').removeAttribute('src'); $('referenceVideo').load(); message.textContent = ''; playing = true; resize(); notify('ready'); });
 }
 </script>
 </body>
