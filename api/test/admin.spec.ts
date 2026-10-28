@@ -70,8 +70,8 @@ describe('Owner administration', () => {
 });
 
 it('all shipped camera references validate and malformed values are rejected', () => {
-  for (const id of ['a','b','c','adios','tu','hola','buenas-tardes','gracias','mucho-gusto']) {
-    const file = ['a','b','c'].includes(id) ? `samples/${id}.json` : `evaluation/${id}${['gracias','mucho-gusto'].includes(id) ? '-movement' : ''}.json`;
+  for (const id of ['a','b','c','adios','tu','hola','buenas-tardes','buenos-dias','gracias']) {
+    const file = ['a','b','c'].includes(id) ? `samples/${id}.json` : `evaluation/${id}${id === 'gracias' ? '-movement' : ''}.json`;
     const r = JSON.parse(readFileSync(resolve(__dirname, '../../public', file), 'utf8'));
     expect(validReference(r, id)).toBe(true);
     expect(validReference({ ...r, signId: 'unknown' }, id)).toBe(false);

@@ -2,7 +2,7 @@
 import cv2,json,math,mediapipe as mp
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-for name,start,end,mode in [('gracias',12,67,'sequence'),('mucho-gusto',23,87,'contact')]:
+for name,start,end,mode in [('gracias',12,67,'sequence')]:
  cap=cv2.VideoCapture(str(root/'references/videos'/f'{name}.mp4'));fps=cap.get(cv2.CAP_PROP_FPS);frames=[];i=0;step=max(1,round(fps/15))
  opts=mp.tasks.vision.PoseLandmarkerOptions(base_options=mp.tasks.BaseOptions(model_asset_path=str(root/'public/models/pose_landmarker_lite.task')),running_mode=mp.tasks.vision.RunningMode.VIDEO,num_poses=1,min_pose_detection_confidence=.6,min_pose_presence_confidence=.6,min_tracking_confidence=.6)
  with mp.tasks.vision.PoseLandmarker.create_from_options(opts) as model:

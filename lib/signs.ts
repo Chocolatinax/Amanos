@@ -24,6 +24,13 @@ export const SIGNS: Sign[] = [
   { id: "c", glosa: "C", significado: "Letra C", unidadId: "1", tipo: "estatica",
     descripcion: { configuracionMano: "Mano curva formando una C", ubicacion: "Frente al pecho", orientacion: "Palma hacia el lado" },
     erroresComunes: ["C demasiado cerrada (parece O)"], video: "/videos/c.mp4" },
+  // I y S: según las láminas del alfabeto que compartió el equipo.
+  { id: "i", glosa: "I", significado: "Letra I", unidadId: "1", tipo: "estatica",
+    descripcion: { configuracionMano: "Puño cerrado con el meñique extendido hacia arriba y el pulgar sobre los dedos doblados", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
+    erroresComunes: [], video: "/videos/i.mp4" },
+  { id: "s", glosa: "S", significado: "Letra S", unidadId: "1", tipo: "estatica",
+    descripcion: { configuracionMano: "Puño cerrado con el pulgar cruzado por delante de los dedos", ubicacion: "Frente al pecho", orientacion: "Palma hacia adelante" },
+    erroresComunes: ["Pulgar al costado, pegado al índice (esa es la A)"], video: "/videos/s.mp4" },
   { id: "hola", glosa: "HOLA", significado: "Saludo", unidadId: "2", tipo: "dinamica",
     descripcion: { configuracionMano: "Cuatro dedos extendidos y juntos, con el pulgar pegado a la palma", ubicacion: "Iniciá junto a la frente y completá el saludo hacia afuera", orientacion: "Seguí la orientación y el movimiento del avatar" },
     erroresComunes: [], video: "/videos/hola.mp4" },
@@ -31,9 +38,7 @@ export const SIGNS: Sign[] = [
     ["buenos-dias", "BUENOS DÍAS", "2", "dinamica", "27"],
     ["buenas-tardes", "BUENAS TARDES", "2", "dinamica", "27"],
     ["adios", "ADIÓS", "2", "dinamica", "21"],
-    ["yo", "YO", "3", "ubicacion", "29"],
     ["tu", "TÚ", "3", "ubicacion", "29"],
-    ["mucho-gusto", "MUCHO GUSTO", "3", "dinamica", "25"],
     ["gracias", "GRACIAS", "4", "dinamica", "22"],
   ] as const).map(([id, glosa, unidadId, tipo, pagina]): Sign => ({
     id, glosa, significado: glosa, unidadId, tipo, pagina,
@@ -49,6 +54,11 @@ export const SIGNS: Sign[] = [
       configuracionMano: "Iniciá con el pulgar arriba y los otros dedos cerrados; después extendé la mano",
       ubicacion: "Frente al cuerpo, con el cambio de posición que muestra el avatar",
       orientacion: "Pasá a la mano extendida con la palma hacia abajo, siguiendo el video de referencia",
+    } : id === "gracias" ? {
+      // Lo observable en el video de referencia del equipo; pendiente de validación LESSA.
+      configuracionMano: "Ambas manos abiertas, con los dedos extendidos",
+      ubicacion: "A los costados del cuerpo, a la altura de los hombros",
+      orientacion: "Subí y bajá ambas manos a la vez, como muestra el avatar",
     } : {
       configuracionMano: "Referencia LESSA pendiente de revisión con el equipo",
       ubicacion: "Consultar la ubicación en el material de referencia",
@@ -61,9 +71,9 @@ export const SIGNS: Sign[] = [
 export const STATIC_SIGN_IDS = SIGNS.filter(s => s.tipo === "estatica").map(s => s.id);
 
 export const UNITS: Unit[] = [
-  { id: "1", nombre: "Unidad 1: Letras", descripcion: "A, B y C · páginas 12–20", signIds: ["a", "b", "c"] },
+  { id: "1", nombre: "Unidad 1: Letras", descripcion: "A, B, C, I y S", signIds: ["a", "b", "c", "i", "s"] },
   { id: "2", nombre: "Unidad 2: Saludos", descripcion: "Hola, buenos días, buenas tardes y adiós", signIds: ["hola", "buenos-dias", "buenas-tardes", "adios"] },
-  { id: "3", nombre: "Unidad 3: Presentación", descripcion: "Yo, tú y mucho gusto", signIds: ["yo", "tu", "mucho-gusto"] },
+  { id: "3", nombre: "Unidad 3: Presentación", descripcion: "Tú", signIds: ["tu"] },
   { id: "4", nombre: "Unidad 4: Cortesía", descripcion: "Gracias", signIds: ["gracias"] },
 ];
 

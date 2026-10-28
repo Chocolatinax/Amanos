@@ -6,16 +6,18 @@ import type { HandLandmarkerResult } from "@mediapipe/tasks-vision";
 import HandCamera from "@/components/HandCamera";
 import Icon from "@/components/Icon";
 import ScoreRing from "@/components/ScoreRing";
-import SignVideo from "@/components/SignVideo";
+import SignVideo, { AVATAR_SIGN_IDS } from "@/components/SignVideo";
 import { normalize } from "@/lib/hand";
 import { evaluateA } from "@/lib/letter-a";
 import { BuenasTardesTracker } from "@/lib/buenas-tardes";
 import { evaluateB } from "@/lib/letter-b";
 import { evaluateC } from "@/lib/letter-c";
+import { LETTER_RIVALS, evaluateLetter } from "@/lib/letter-is";
 import { AdiosTracker, parseAdios, wristAnchor, type AdiosReference } from "@/lib/adios";
 import type { BodyFrame } from "@/lib/body-tracking";
 import { BODY_EVALUATED_IDS, CAMERA_EVALUATED_IDS, HumanEvaluator, observeHuman, parseHumanReference, type HumanReference } from "@/lib/human-evaluator";
-import { MovementTracker, observeMovement, parseMovementReference, type MovementReference, type MovementCheck } from "@/lib/movement-check";
+import { MovementTracker, ShapeVote, handOpenness, observeMovement, parseMovementReference, type MovementReference, type MovementCheck } from "@/lib/movement-check";
+import { BuenosDiasTracker, observeBuenosDias, parseBuenosDias, type BuenosDiasReference } from "@/lib/buenos-dias";
 import { loadSamples, classify, HoldTracker, MIN_SAMPLES, type SampleSet } from "@/lib/classifier";
 import { STATIC_SIGN_IDS, type Sign } from "@/lib/signs";
 import { useCatalog } from '@/lib/catalog';
@@ -55,7 +57,7 @@ function Practice({ id }: { id: string }) {
   // Separado del error de referencias: reactivar la cámara no debe ocultar una referencia que no cargó.
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [sets, setSets] = useState<SampleSet[] | null>(null);
-  const [feedback, setFeedback] = useState("Mostrá una sola mano completa frente a la cámara.");
+  const [feedback, setFeedback] = useState(["gracias", "buenos-dias"].includes(id) ? "Mostrá el rostro, ambos hombros y las dos manos frente a la cámara." : "Mostrá una sola mano completa frente a la cámara.");
   const [score, setScore] = useState(0);
   const [handVisible, setHandVisible] = useState(false);
   const [mastered, setMastered] = useState(false);
@@ -85,21 +87,33 @@ function Practice({ id }: { id: string }) {
   const movement = useRef(new MovementTracker());
   const movementReference = useRef<MovementReference | null>(null);
   const [movementCheck, setMovementCheck] = useState<MovementCheck | null>(null);
-  const partial = id === "mucho-gusto";
-  const feedbackOnly = evaluationAllowed && (partial || id === "gracias");
-  const dynamic = ["adios", "hola", "gracias", "buenas-tardes"].includes(id);
+  const openVote = useRef(new ShapeVote());
+  const buenosDias = useRef(new BuenosDiasTracker());
+  const buenosDiasReference = useRef<BuenosDiasReference | null>(null);
+  // GRACIAS: recorrido de ambas muñecas más mayoría de cuadros con manos abiertas.
+  const movementSign = id === "gracias";
+  const dynamic = ["adios", "hola", "gracias", "buenas-tardes", "buenos-dias"].includes(id);
   const evaluable = evaluationAllowed && CAMERA_EVALUATED_IDS.includes(id);
   const requiredIds = STATIC_SIGN_IDS.includes(id) ? [id] : [];
   const missing = requiredIds.filter(sid => !sets?.some(s => s.signId === sid && s.samples.length >= MIN_SAMPLES));
-  const ready = evaluationAllowed && (id === "adios" || BODY_EVALUATED_IDS.includes(id) || partial ? sequenceReady : evaluable && sets !== null && missing.length === 0);
+  const sequenceSign = movementSign || id === "adios" || id === "buenos-dias" || BODY_EVALUATED_IDS.includes(id);
+  const ready = evaluable && (sequenceSign ? sequenceReady : sets !== null && missing.length === 0);
+  const samplesPending = evaluable && requiredIds.length > 0 && sets !== null && missing.length > 0;
 
   useEffect(() => {
     let cancelled = false;
-    setsRef.current = []; humanReference.current = null; movementReference.current = null; adiosReference.current = null;
-    hold.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); adios.current.reset();
+    setsRef.current = []; humanReference.current = null; movementReference.current = null; adiosReference.current = null; buenosDiasReference.current = null;
+    hold.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); adios.current.reset(); buenosDias.current.reset(); openVote.current.reset();
     setSequenceReady(false); setSets(null); setScore(0);
-    if (!evaluationAllowed) return;
-    if (feedbackOnly) {
+    if (!evaluable) return;
+    if (id === "buenos-dias") {
+      loadReference(id).then(value => {
+        if (cancelled) return;
+        buenosDiasReference.current = parseBuenosDias(value);
+        setSequenceReady(!!buenosDiasReference.current); setSets([]);
+        if (!buenosDiasReference.current) setError("No se pudo cargar la referencia de BUENOS DÍAS. Recargá la página.");
+      }).catch(() => { if (!cancelled) setError("No se pudo cargar la referencia. Revisá la conexión."); });
+    } else if (movementSign) {
       loadReference(id).then(value => {
         if (cancelled) return;
         movementReference.current = parseMovementReference(value, id);
@@ -120,13 +134,13 @@ function Practice({ id }: { id: string }) {
         adiosReference.current = parseAdios(value); setSequenceReady(!!adiosReference.current); setSets([]);
         if (!adiosReference.current) setError("No se pudo cargar la referencia de ADIÓS. Recargá la página.");
       }).catch(() => { if (!cancelled) { setSets([]); setError("No se pudo cargar la referencia de ADIÓS. Revisá la conexión."); } });
-    } else if (evaluable) Promise.all((STATIC_SIGN_IDS.includes(id) ? [id] : STATIC_SIGN_IDS).map(loadSamples)).then(results => {
+    } else if (evaluable) Promise.all((STATIC_SIGN_IDS.includes(id) ? [id, ...(LETTER_RIVALS[id] ?? [])] : STATIC_SIGN_IDS).map(loadSamples)).then(results => {
       if (cancelled) return;
       const loaded = results.filter((s): s is SampleSet => s !== null);
       setsRef.current = loaded; setSets(loaded);
     });
     return () => { cancelled = true; };
-  }, [evaluable, id, partial, feedbackOnly, evaluationAllowed, referenceRevision]);
+  }, [evaluable, id, movementSign, referenceRevision]);
 
   const finish = useCallback((s: number) => {
     if (masteredRef.current) return;
@@ -139,23 +153,33 @@ function Practice({ id }: { id: string }) {
   const onFrame = useCallback((res: HandLandmarkerResult, ts: number) => {
     if (masteredRef.current) return;
     if (!evaluationAllowed) { setHandVisible(res.landmarks.length > 0); setFeedback('Evaluación pausada. Podés practicar siguiendo el avatar.'); return; }
-    if (feedbackOnly) {
+    if (movementSign) {
       const observation = observeMovement(bodyFrame.current, ts);
       const check = movement.current.update(observation, movementReference.current);
-      setMovementCheck(check); setHandVisible(!!observation); setScore(check.similarity); setFeedback(check.feedback);
-      return; // A body check must not record full sign mastery or award XP.
+      openVote.current.update(handOpenness(res), ts / 1000);
+      // Las manos abiertas cuentan solo durante el mismo tramo del recorrido; si el recorrido se reinicia, también los votos.
+      if (movement.current.since === null) openVote.current.reset();
+      const since = check.windowStart ?? movement.current.since;
+      const open = since !== null && openVote.current.ok("open", since), passed = check.verified && open;
+      setMovementCheck({ ...check, checks: [...check.checks, { label: "Manos abiertas", ok: open }] });
+      setHandVisible(!!observation); setScore(check.similarity); setBest(b => Math.max(b, check.similarity));
+      setFeedback(check.verified && !open ? "El recorrido está bien. Extendé los dedos de ambas manos, sin cerrar los puños." : check.feedback);
+      if (passed) finish(check.similarity);
+      return;
     }
     const vec = normalize(res);
-    setHandVisible(BODY_EVALUATED_IDS.includes(id) || partial ? res.landmarks.length > 0 : evaluable ? !!vec : res.landmarks.length > 0);
+    setHandVisible(BODY_EVALUATED_IDS.includes(id) || id === "buenos-dias" ? res.landmarks.length > 0 : evaluable ? !!vec : res.landmarks.length > 0);
     const prediction = vec && evaluable ? classify(vec, setsRef.current, STATIC_SIGN_IDS) : null;
     const body = bodyFrame.current;
     const anchor = id === "adios" && body && ts - body.timestamp <= 300 ? wristAnchor(res.landmarks[0]?.[0], body.pose.landmarks[0], res.handedness[0]?.[0]?.categoryName) : null;
     const aCheck = id === "a" ? evaluateA(vec, setsRef.current.find(s => s.signId === "a"))
       : id === "b" ? evaluateB(vec, setsRef.current.find(s => s.signId === "b"))
       : id === "c" ? evaluateC(vec, setsRef.current.find(s => s.signId === "c"))
+      : id === "i" || id === "s" ? evaluateLetter(vec, id, setsRef.current)
       : id === "adios" ? adios.current.update(vec, anchor, ts, adiosReference.current)
       : id === "buenas-tardes" ? buenasTardes.current.update(observeHuman(res, body, ts, 1), humanReference.current)
-      : BODY_EVALUATED_IDS.includes(id) ? human.current.update(observeHuman(res, body, ts, humanReference.current?.requiredHands ?? (id === "gracias" ? 2 : 1)), humanReference.current, ts)
+      : id === "buenos-dias" ? buenosDias.current.update(observeBuenosDias(res, body, ts), buenosDiasReference.current)
+      : BODY_EVALUATED_IDS.includes(id) ? human.current.update(observeHuman(res, body, ts, humanReference.current?.requiredHands ?? 1), humanReference.current, ts)
       : null;
     const accepted = aCheck ? aCheck.accepted && aCheck.similarity >= THRESHOLD : prediction?.signId === id && prediction.similarity >= THRESHOLD;
     const similarity = aCheck ? aCheck.similarity : accepted ? prediction!.similarity : 0;
@@ -165,20 +189,20 @@ function Practice({ id }: { id: string }) {
       : prediction && prediction.signId !== id ? `Se parece más a ${getSign(prediction.signId)?.glosa}. Revisá la referencia.`
       : accepted ? "¡Sostenela un segundo!"
       : "No reconocida con suficiente claridad. Revisá la forma y orientación de la mano.");
-    const done = id === "adios" || humanReference.current?.mode === "sequence" ? accepted : hold.current.update(accepted, ts);
+    const done = id === "adios" || id === "buenos-dias" || humanReference.current?.mode === "sequence" ? accepted : hold.current.update(accepted, ts);
     setHoldMs(accepted ? Math.min(HOLD_MS, hold.current.held()) : 0);
     if (done) finish(similarity);
-  }, [finish, id, evaluable, partial, feedbackOnly, evaluationAllowed, getSign]);
+  }, [finish, id, evaluable, movementSign, evaluationAllowed, getSign]);
 
   if (!sign) return <div className="mx-auto max-w-3xl p-margin"><p>Seña no encontrada.</p><Link href="/app" className="text-primary underline">Volver al panel</Link></div>;
 
-  const resetTrackers = () => { hold.current.reset(); adios.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); setMovementCheck(null); bodyFrame.current = null; setScore(0); setHoldMs(0); };
+  const resetTrackers = () => { hold.current.reset(); adios.current.reset(); human.current.reset(); buenasTardes.current.reset(); movement.current.reset(); buenosDias.current.reset(); openVote.current.reset(); setMovementCheck(null); bodyFrame.current = null; setScore(0); setHoldMs(0); };
   const reset = () => { resetTrackers(); setCameraError(null); };
   const activate = () => { reset(); startedAt.current = performance.now(); setConsent(true); };
   // Conserva errores vigentes (cámara o referencia) y reabre la cámara si se apagó al cambiar de pestaña.
   const closeGuide = () => { if (consent) resetTrackers(); else activate(); startedAt.current = performance.now(); setGuideOpen(false); };
   const retry = () => { masteredRef.current = false; setMastered(false); setResult(null); reset(); startedAt.current = performance.now(); };
-  const accepted = feedbackOnly ? movementCheck?.verified === true : score >= THRESHOLD;
+  const accepted = movementSign ? movementCheck?.checks.every(c => c.ok) === true && movementCheck.verified : score >= THRESHOLD;
   const holdPct = Math.round((holdMs / HOLD_MS) * 100);
   const unitLabel = getUnit(sign.unidadId)?.nombre.replace(/^Unidad \d+: /, "");
 
@@ -214,7 +238,7 @@ function Practice({ id }: { id: string }) {
       <div className="practice-notices absolute left-3 right-36 top-[76px] z-20 mx-auto flex max-h-[25dvh] max-w-2xl flex-col gap-2 overflow-y-auto md:inset-x-space-md md:top-20 md:max-h-none">
         {[cameraError, error].filter(Boolean).map(msg => <p key={msg} role="alert" className="rounded-xl bg-error-container px-space-md py-space-sm font-body-sm text-body-sm text-on-error-container">{msg}</p>)}
         {!evaluable && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
-          {!evaluationAllowed ? 'La evaluación de esta seña está pausada. Podés ensayarla con el avatar.' : partial ? "Comprobamos contacto y altura con cámara. Los dedos ocultos no se califican ni se marca la seña dominada." : feedbackOnly ? "Comprobamos el recorrido de ambas manos. La forma de los dedos sigue pendiente de revisión." : "Evaluación pendiente: faltan referencias compatibles de esta seña. Podés ensayarla sin calificación."}</p>}
+          {!evaluationAllowed ? 'La evaluación de esta seña está pausada. Podés ensayarla con el avatar.' : "Evaluación pendiente: faltan referencias compatibles de esta seña. Podés ensayarla sin calificación."}</p>}
         {evaluable && !ready && requiredIds.length > 0 && <p className="rounded-xl bg-tertiary-fixed/95 px-space-md py-space-sm font-body-sm text-body-sm text-on-tertiary-fixed backdrop-blur-md">
           {sets === null ? "Cargando referencias…" : `Faltan referencias compatibles de ${missing.map(m => m.toUpperCase()).join(", ")}. La evaluación estará disponible al completar estas referencias.`}
           {sets !== null && user?.isAdmin && <Link href="/app/admin" className="ml-2 font-bold underline">Revisar referencias</Link>}
@@ -228,18 +252,18 @@ function Practice({ id }: { id: string }) {
             <div className="flex items-start justify-between gap-4">
               <div className={`flex min-w-0 items-center gap-2 text-sm font-semibold ${accepted ? "text-secondary" : "text-on-surface-variant"}`}>
                 <Icon name={accepted ? "verified" : handVisible ? "search" : "front_hand"} fill={accepted} className="shrink-0 text-xl" />
-                <span>{feedbackOnly ? (accepted ? (partial ? "Contacto comprobado" : "Recorrido comprobado") : partial ? "Comprobá el contacto" : "Comprobá el recorrido") : !ready ? "Práctica guiada" : accepted ? "¡Muy bien!" : handVisible ? "Ajustá tu seña" : "Mostrá tu mano"}</span>
+                <span>{!ready ? "Práctica guiada" : accepted ? "¡Muy bien!" : handVisible ? "Ajustá tu seña" : sequenceSign ? "Mostrá las manos y los hombros" : "Mostrá tu mano"}</span>
               </div>
               {ready && <span className={`shrink-0 text-2xl font-bold tabular-nums leading-none ${accepted ? "text-secondary" : "text-primary"}`}>{score}%</span>}
             </div>
-            {ready && <div role="progressbar" aria-label={feedbackOnly ? (partial ? "Progreso del contacto sostenido" : "Coincidencia del recorrido") : "Similitud con la referencia"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={score} className="mt-3 h-2 md:mt-4 overflow-hidden rounded-full bg-surface-container-high">
+            {ready && <div role="progressbar" aria-label="Similitud con la referencia" aria-valuemin={0} aria-valuemax={100} aria-valuenow={score} className="mt-3 h-2 md:mt-4 overflow-hidden rounded-full bg-surface-container-high">
               <div className={`h-full rounded-full transition-all duration-200 ${accepted ? "bg-secondary" : "bg-primary"}`} style={{ width: `${score}%` }} />
             </div>}
             <p role="status" className="mt-2 text-sm leading-snug md:mt-3 md:leading-relaxed text-on-surface">{ready ? feedback : "Ensayá con la cámara y comparala con el avatar."}</p>
-            {ready && feedbackOnly && movementCheck && <ul aria-label="Comprobaciones de cámara" className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+            {ready && movementSign && movementCheck && <ul aria-label="Comprobaciones de cámara" className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
               {movementCheck.checks.map(check => <li key={check.label} className={`flex items-start gap-1 ${check.ok ? "text-secondary" : "text-on-surface-variant"}`}><Icon name={check.ok ? "check_circle" : "radio_button_unchecked"} className="shrink-0 text-sm" /><span>{check.label}</span></li>)}
             </ul>}
-            {ready && !feedbackOnly && <div className="mt-2 flex items-center justify-between gap-2 border-t border-outline-variant/40 pt-2 md:mt-3 md:pt-3 text-xs text-on-surface-variant">
+            {ready && <div className="mt-2 flex items-center justify-between gap-2 border-t border-outline-variant/40 pt-2 md:mt-3 md:pt-3 text-xs text-on-surface-variant">
               <span title="Comparación con las muestras de referencia; no es una probabilidad de acierto.">Similitud con la referencia</span>
               <span className="shrink-0 tabular-nums">Mejor: {best}%</span>
             </div>}
@@ -280,14 +304,14 @@ function Practice({ id }: { id: string }) {
           <div className={`relative overflow-hidden rounded-2xl px-3 py-3 shadow-2xl md:rounded-full md:px-space-lg md:py-space-md ${accepted ? "bg-secondary text-on-secondary" : "bg-primary-container text-on-primary"}`}>
             <div className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-150" style={{ width: `${holdPct}%` }} />
             <div className="relative flex items-center justify-between gap-space-sm">
-              <span className="flex min-w-0 items-center gap-2 text-sm font-semibold md:font-label-lg md:text-label-lg"><Icon name={accepted ? "thumb_up" : "pan_tool"} fill /> {accepted ? (feedbackOnly ? "Comprobación completada" : "¡Sostenela! Vas súper bien") : partial ? "Compará el contacto con la referencia" : ready ? (dynamic ? `Completá el movimiento de ${sign.glosa}` : "Hacé la seña y mantenela quieta") : "Ensayá la seña a tu ritmo"}</span>
-              {ready && !dynamic && !feedbackOnly && <span className="shrink-0 rounded-full bg-white/20 px-space-sm py-0.5 font-label-sm text-label-sm">{(holdMs / 1000).toFixed(1)} / {HOLD_MS / 1000}s</span>}
+              <span className="flex min-w-0 items-center gap-2 text-sm font-semibold md:font-label-lg md:text-label-lg"><Icon name={accepted ? "thumb_up" : "pan_tool"} fill /> {accepted ? (dynamic ? "¡Muy bien! Seña completada" : "¡Sostenela! Vas súper bien") : ready ? (dynamic ? `Completá el movimiento de ${sign.glosa}` : "Hacé la seña y mantenela quieta") : "Ensayá la seña a tu ritmo"}</span>
+              {ready && !dynamic && <span className="shrink-0 rounded-full bg-white/20 px-space-sm py-0.5 font-label-sm text-label-sm">{(holdMs / 1000).toFixed(1)} / {HOLD_MS / 1000}s</span>}
             </div>
           </div>
         )}
       </div>
 
-      {guideOpen && !mastered && <GuideModal sign={sign} unitLabel={unitLabel} evaluable={evaluable} feedbackOnly={feedbackOnly} evaluationAllowed={evaluationAllowed} prev={prev} next={next} onStart={closeGuide} />}
+      {guideOpen && !mastered && <GuideModal sign={sign} unitLabel={unitLabel} evaluable={evaluable} samplesPending={samplesPending} evaluationAllowed={evaluationAllowed} prev={prev} next={next} onStart={closeGuide} />}
 
       {/* Seña dominada */}
       {mastered && <MasteredModal signGlosa={sign.glosa} score={finalScore} result={result} seconds={seconds} streak={stats.streak}
@@ -297,8 +321,8 @@ function Practice({ id }: { id: string }) {
 }
 
 /** Seña e instrucciones en una ventana encima de la cámara; la detección queda en pausa mientras está abierta. */
-function GuideModal({ sign, unitLabel, evaluable, feedbackOnly, evaluationAllowed, prev, next, onStart }: {
-  sign: Sign; unitLabel?: string; evaluable: boolean; feedbackOnly: boolean; evaluationAllowed: boolean;
+function GuideModal({ sign, unitLabel, evaluable, samplesPending, evaluationAllowed, prev, next, onStart }: {
+  sign: Sign; unitLabel?: string; evaluable: boolean; samplesPending: boolean; evaluationAllowed: boolean;
   prev?: Sign; next?: Sign; onStart: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -329,9 +353,9 @@ function GuideModal({ sign, unitLabel, evaluable, feedbackOnly, evaluationAllowe
     { n: "04", icon: "my_location", title: "Ubicación", text: sign.descripcion.ubicacion },
   ];
   const mode = !evaluationAllowed ? "La evaluación de esta seña está pausada. Podés ensayarla siguiendo el avatar."
+    : samplesPending ? "Todavía faltan las muestras de referencia de la cámara para calificar esta seña. Podés ensayarla siguiendo el avatar."
     : evaluable ? "Se califica con cámara: tu porcentaje es la similitud con las muestras de referencia."
-    : feedbackOnly ? (sign.id === "gracias" ? "La cámara comprueba el recorrido de ambas manos. La forma de los dedos aún requiere revisión; no marca la seña como dominada." : "La cámara comprueba la ubicación de las muñecas y el contacto. Los dedos ocultos aún requieren revisión; no marca la seña como dominada.")
-    : `Con la cámara podés ensayar esta seña, pero todavía no se califica: requiere evaluar ${sign.tipo === "dinamica" ? "el movimiento completo" : "la ubicación respecto al cuerpo"}.`;
+    : `Con la cámara podés ensayar esta seña, pero todavía no se califica: ${sign.tipo === "estatica" ? "faltan las muestras de referencia de la cámara" : sign.tipo === "dinamica" ? "requiere evaluar el movimiento completo" : "requiere evaluar la ubicación respecto al cuerpo"}.`;
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="guide-title" className="absolute inset-0 z-30 flex items-end justify-center bg-inverse-surface/55 p-2 backdrop-blur-[2px] sm:items-center sm:p-space-md">
       <div ref={box} className="pop flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-surface-container-lowest shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
@@ -339,7 +363,7 @@ function GuideModal({ sign, unitLabel, evaluable, feedbackOnly, evaluationAllowe
           <div className="grid gap-space-md md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-space-lg">
             <div className="flex flex-col gap-space-xs">
               <SignVideo sign={sign} variant="full" ratio="4 / 3" className="!rounded-2xl" />
-              <p className="px-1 text-xs text-on-surface-variant">Avatar de referencia del equipo. <span className="text-outline">Validado por señante nativo: pendiente.</span></p>
+              <p className="px-1 text-xs text-on-surface-variant">{AVATAR_SIGN_IDS.includes(sign.id) ? "Avatar de referencia del equipo." : "El avatar de esta seña está en preparación; guiate por la descripción."} <span className="text-outline">Validado por señante nativo: pendiente.</span></p>
             </div>
             <div className="flex min-w-0 flex-col gap-space-sm">
               <div className="flex flex-wrap items-center gap-space-xs">

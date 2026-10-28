@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { CAMERA_EVALUATED_IDS } from "@/lib/human-evaluator";
 import Icon from "@/components/Icon";
 import ProgressRing from "@/components/ProgressRing";
 import SignVideo from "@/components/SignVideo";
@@ -31,7 +32,7 @@ export default function Dashboard() {
   const allDone = stats.mastered === SIGNS.length;
   const paid = progress.plan === "pago";
   const first = (user?.name ?? "").split(" ")[0] || "amigo";
-  const evaluable = next.tipo === "estatica";
+  const evaluable = CAMERA_EVALUATED_IDS.includes(next.id);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-space-xl px-margin py-space-lg md:px-margin-tablet lg:px-margin-desktop">

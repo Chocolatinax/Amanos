@@ -15,9 +15,9 @@ const signs = load('lib/signs.ts');
 const vec = n => Array(63).fill(n);
 const set = (signId, n) => ({ version: features.FEATURE_VERSION, signId, samples: Array.from({ length: 20 }, () => vec(n)) });
 const ids = ['a', 'b', 'c'];
-test('demo has the requested ten signs plus hola and only three static letters', () => {
-  assert.equal(signs.SIGNS.map(s => s.id).join(','), 'a,b,c,hola,buenos-dias,buenas-tardes,adios,yo,tu,mucho-gusto,gracias');
-  assert.equal(signs.STATIC_SIGN_IDS.join(','), ids.join(','));
+test('demo has the current catalog and five static letters', () => {
+  assert.equal(signs.SIGNS.map(s => s.id).join(','), 'a,b,c,i,s,hola,buenos-dias,buenas-tardes,adios,tu,gracias');
+  assert.equal(signs.STATIC_SIGN_IDS.join(','), 'a,b,c,i,s');
 });
 test('recognizes the winning class, not the requested exercise', () => {
   assert.equal(c.classify(vec(1), [set('a', 0), set('b', 1), set('c', 2)], ids).signId, 'b');

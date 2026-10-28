@@ -4,7 +4,9 @@ export type HumanHand = { features: number[]; anchor: number[]; thumb?: number[]
 export type HumanPoint = { time: number; hands: HumanHand[]; gap: number; phase?: "thumb-up" | "transition" | "flat" };
 export type HumanReference = { version: "human-body-v1"; signId: "tu" | "gracias" | "hola" | "buenas-tardes"; mode: "hold" | "sequence"; requiredHands: number; frames: HumanPoint[] };
 export const BODY_EVALUATED_IDS = ["tu", "gracias", "hola", "buenas-tardes"];
-export const CAMERA_EVALUATED_IDS = ["a", "b", "c", "adios", "tu", "hola", "buenas-tardes"];
+// Señas que se califican y marcan como dominadas. GRACIAS usa lib/movement-check.ts y BUENOS DÍAS lib/buenos-dias.ts.
+// I y S se califican en cuanto existan sus muestras (public/samples, /capture o el panel de administración).
+export const CAMERA_EVALUATED_IDS = ["a", "b", "c", "i", "s", "adios", "tu", "hola", "buenas-tardes", "gracias", "buenos-dias"];
 const finite = (v: unknown, n: number): v is number[] => Array.isArray(v) && v.length === n && v.every(Number.isFinite);
 export function parseHumanReference(value: unknown, id: string): HumanReference | null {
   const r = value as HumanReference;

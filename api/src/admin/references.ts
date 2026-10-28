@@ -4,10 +4,17 @@ export function validReference(value: unknown, id: string): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const r = value as any;
   if (r.signId !== id || JSON.stringify(r).length > 900_000) return false;
-  if (['a', 'b', 'c'].includes(id)) return r.version === 'hand-world-v2' && Array.isArray(r.samples) && r.samples.length >= 20 && r.samples.length <= 1000 && r.samples.every((v: unknown) => vector(v, 63));
+  if (['a', 'b', 'c', 'i', 's'].includes(id)) return r.version === 'hand-world-v2' && Array.isArray(r.samples) && r.samples.length >= 20 && r.samples.length <= 1000 && r.samples.every((v: unknown) => vector(v, 63));
   if (!Array.isArray(r.frames) || r.frames.length < 8 || r.frames.length > 600 || r.frames.some((f: any, i: number) => !f || !Number.isFinite(f.time) || f.time < 0 || (i > 0 && f.time <= r.frames[i - 1].time))) return false;
   if (id === 'adios') return r.version === 'hand-body-sequence-v1' && r.frames.every((f: any) => vector(f.shape, 63) && vector(f.anchor, 2));
-  if (['gracias', 'mucho-gusto'].includes(id)) return r.version === 'movement-check-v1' && r.scope === 'body-motion-only' && r.mode === (id === 'gracias' ? 'sequence' : 'contact') && r.frames.every((f: any) => vector(f.wrists, 4));
+  if (id === 'gracias') return r.version === 'movement-check-v1' && r.scope === 'body-motion-only' && r.mode === 'sequence' && r.frames.every((f: any) => vector(f.wrists, 4));
+  if (id === 'buenos-dias') {
+    const phases = ['thumb-up', 'transition', 'cross', 'open'];
+    if (r.version !== 'buenos-dias-v1' || !r.frames.every((f: any) => phases.includes(f.phase) && vector(f.wrists, 4))) return false;
+    const order = r.frames.filter((f: any) => f.phase !== 'transition').map((f: any) => phases.indexOf(f.phase));
+    if (order.some((v: number, i: number) => i > 0 && v < order[i - 1]) || ['thumb-up', 'cross', 'open'].some(p => r.frames.filter((f: any) => f.phase === p).length < 4)) return false;
+    return Array.isArray(r.thumbs) && r.thumbs.length >= 4 && r.thumbs.length <= 200 && r.thumbs.every((t: any) => t && vector(t.features, 12) && vector(t.thumbDirection, 3));
+  }
   if (!['tu', 'hola', 'buenas-tardes'].includes(id) || r.version !== 'human-body-v1' || r.requiredHands !== 1 || r.mode !== (id === 'tu' ? 'hold' : 'sequence')) return false;
   if (!r.frames.every((f: any) => Number.isFinite(f.gap) && f.gap >= 0 && Array.isArray(f.hands) && f.hands.length === 1 && f.hands.every((h: any) => h && vector(h.features, 12) && vector(h.anchor, 4) && (id !== 'hola' || vector(h.thumb, 3))))) return false;
   if (id === 'buenas-tardes') {

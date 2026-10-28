@@ -1,7 +1,8 @@
 import { API_URL, hasBackend } from './api';
 
 export function referencePath(id: string) {
-  return ['a', 'b', 'c'].includes(id) ? `/samples/${id}.json` : `/evaluation/${id}${['gracias', 'mucho-gusto'].includes(id) ? '-movement' : ''}.json`;
+  // Letras estáticas: muestras del clasificador. GRACIAS: comprobación de recorrido. El resto: referencias de evaluación.
+  return ['a', 'b', 'c', 'i', 's'].includes(id) ? `/samples/${id}.json` : `/evaluation/${id}${id === 'gracias' ? '-movement' : ''}.json`;
 }
 export async function loadReference(id: string): Promise<unknown> {
   if (hasBackend()) {

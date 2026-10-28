@@ -1,13 +1,50 @@
+import type { HandLandmarkerResult } from "@mediapipe/tasks-vision";
 import type { BodyFrame } from "./body-tracking";
+import { handFeatures } from "./human-evaluator";
 
-export const MOVEMENT_CHECK_IDS = ["gracias", "mucho-gusto"];
+// GRACIAS: recorrido de ambas muñecas (pose) más un control de manos abiertas. En el video fuente los dedos se ven
+// de frente y su detección cuadro a cuadro es inestable, así que la forma se decide por mayoría durante el intento.
+export const MOVEMENT_CHECK_IDS = ["gracias"];
 export type MovementPoint = { time: number; wrists: number[] };
-export type MovementReference = { version: "movement-check-v1"; scope: "body-motion-only"; signId: string; mode: "sequence" | "contact"; frames: MovementPoint[] };
-export type MovementCheck = { verified: boolean; similarity: number; feedback: string; checks: { label: string; ok: boolean }[] };
+export type MovementReference = { version: "movement-check-v1"; scope: "body-motion-only"; signId: string; mode: "sequence"; frames: MovementPoint[] };
+// windowStart: inicio del tramo que obtuvo la similitud (para contar la forma de las manos en ese mismo tramo).
+export type MovementCheck = { verified: boolean; similarity: number; feedback: string; checks: { label: string; ok: boolean }[]; windowStart?: number };
+export type HandShape = "open" | "fist" | "mixed";
 const finite = (v: unknown): v is number[] => Array.isArray(v) && v.length === 4 && v.every(Number.isFinite);
 export function parseMovementReference(value: unknown, id: string): MovementReference | null {
   const r = value as MovementReference;
-  return r?.version === "movement-check-v1" && r.scope === "body-motion-only" && r.signId === id && MOVEMENT_CHECK_IDS.includes(id) && r.mode === (id === "gracias" ? "sequence" : "contact") && Array.isArray(r.frames) && r.frames.length >= 8 && r.frames.every((p, i) => p && Number.isFinite(p.time) && finite(p.wrists) && (i === 0 || p.time > r.frames[i - 1].time)) ? r : null;
+  return r?.version === "movement-check-v1" && r.scope === "body-motion-only" && r.signId === id && MOVEMENT_CHECK_IDS.includes(id) && r.mode === "sequence" && Array.isArray(r.frames) && r.frames.length >= 8 && r.frames.every((p, i) => p && Number.isFinite(p.time) && finite(p.wrists) && (i === 0 || p.time > r.frames[i - 1].time)) ? r : null;
+}
+
+/** "open": una mano con los dedos extendidos y ninguna en puño claro. "fist": todas cerradas. "mixed": una abierta y otra en puño. */
+export function handOpenness(result: HandLandmarkerResult): HandShape | null {
+  const bends = result.worldLandmarks.flatMap((points, i) => {
+    const cat = result.handedness[i]?.[0];
+    if (!cat || cat.score < .65 || points.length !== 21) return [];
+    const o = points[0], m = points[9], scale = Math.hypot(m.x - o.x, m.y - o.y, m.z - o.z);
+    if (scale < .005) return [];
+    const v = points.flatMap(p => [(p.x - o.x) / scale, (p.y - o.y) / scale, (p.z - o.z) / scale]);
+    const b = handFeatures(v).slice(0, 4);
+    return b.every(Number.isFinite) ? [b.reduce((s, x) => s + x, 0) / 4] : [];
+  });
+  if (!bends.length) return null;
+  const open = bends.some(b => b < -.5), fist = bends.some(b => b > .3);
+  return open && fist ? "mixed" : open ? "open" : bends.every(b => b > .1) ? "fist" : null;
+}
+
+/** Mayoría de cuadros con la forma esperada durante el mismo tramo que se evalúa. */
+export class ShapeVote {
+  private votes: { time: number; state: HandShape }[] = [];
+  reset() { this.votes = []; }
+  update(state: HandShape | null, time: number) {
+    if (state) this.votes.push({ time, state });
+    this.votes = this.votes.filter(v => time - v.time <= 5);
+  }
+  /** Al menos `minimum` cuadros clasificados desde `since` y mayoría con la forma pedida ("mixed" cuenta en contra). */
+  ok(expected: "open" | "fist", since = -Infinity, minimum = 4) {
+    const window = this.votes.filter(v => v.time >= since);
+    return window.length >= minimum && window.filter(v => v.state === expected).length / window.length >= .6;
+  }
 }
 export function observeMovement(body: BodyFrame | null, timestamp: number): MovementPoint | null {
   if (!body?.imageSize || !Number.isFinite(timestamp) || timestamp < body.timestamp || timestamp - body.timestamp > 300) return null;
@@ -36,6 +73,8 @@ export class MovementTracker {
   private points: MovementPoint[] = [];
   private last: MovementCheck = { verified: false, similarity: 0, feedback: "Mostrá ambos brazos y muñecas.", checks: [] };
   reset() { this.points = []; this.last = { verified: false, similarity: 0, feedback: "Repetí desde el inicio.", checks: [] }; }
+  /** Inicio del búfer del intento en curso (null si se reinició). */
+  get since() { return this.points[0]?.time ?? null; }
   update(point: MovementPoint | null, reference: MovementReference | null): MovementCheck {
     const reply = (feedback: string, similarity: number, checks: MovementCheck["checks"], verified = false) => this.last = { feedback, similarity, checks, verified };
     if (!reference) return reply("Cargando la comprobación de cámara…", 0, []);
@@ -48,18 +87,13 @@ export class MovementTracker {
       const values = reference.frames.map(p => p.wrists[i]);
       return point.wrists[i] >= Math.min(...values) - .15 && point.wrists[i] <= Math.max(...values) + .15;
     });
-    const separation = Math.abs(gap(point) - median(reference.frames.map(gap))) < (reference.mode === "contact" ? .16 : .3);
+    const separation = Math.abs(gap(point) - median(reference.frames.map(gap))) < .3;
     const centered = Math.abs((point.wrists[0] + point.wrists[2]) / 2 - median(reference.frames.map(p => (p.wrists[0] + p.wrists[2]) / 2))) < .3;
-    checks.push({ label: "Altura de las manos", ok: heights }, { label: reference.mode === "contact" ? "Muñecas en posición de contacto" : "Separación de ambas manos", ok: separation && centered });
-    if (!heights || !separation || !centered) { this.points = []; return reply(!heights ? "Ajustá la altura de ambas manos según el avatar." : reference.mode === "contact" ? "Ajustá el contacto frente al pecho, como en MUCHO GUSTO." : "Mantené las manos separadas y frente al cuerpo, como en GRACIAS.", 0, checks); }
+    checks.push({ label: "Altura de las manos", ok: heights }, { label: "Separación de ambas manos", ok: separation && centered });
+    if (!heights || !separation || !centered) { this.points = []; return reply(!heights ? "Ajustá la altura de ambas manos según el avatar." : "Mantené las manos separadas y frente al cuerpo, como en GRACIAS.", 0, checks); }
     this.points.push(point); this.points = this.points.filter(p => point.time - p.time <= 5);
-    if (reference.mode === "contact") {
-      const duration = point.time - this.points[0].time, verified = duration >= 1 && this.points.length >= 7;
-      checks.push({ label: "Contacto sostenido un segundo", ok: verified });
-      return reply(verified ? "Contacto y altura comprobados. La cámara no puede verificar los dedos ocultos." : "Mantené el contacto y la altura durante un segundo.", verified ? 100 : Math.min(89, Math.round(duration * 100)), checks, verified);
-    }
     const minimum = Math.max(1.2, (reference.frames.at(-1)!.time - reference.frames[0].time) * .75);
-    let best = 0, moving = false;
+    let best = 0, moving = false, windowStart: number | undefined;
     for (let start = 0; start <= this.points.length - 8; start++) {
       const window = this.points.slice(start), duration = point.time - window[0].time;
       if (duration < minimum || duration > 4.5) continue;
@@ -71,10 +105,12 @@ export class MovementTracker {
       moving = true;
       const n = window.length, m = reference.frames.length, costs = Array.from({ length: n + 1 }, () => Array(m + 1).fill(Infinity)); costs[0][0] = 0;
       for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) costs[i][j] = distance(window[i - 1], reference.frames[j - 1]) + Math.min(costs[i - 1][j], costs[i][j - 1], costs[i - 1][j - 1]);
-      best = Math.max(best, Math.round(100 * Math.max(0, 1 - costs[n][m] / Math.max(n, m) / .4)));
+      const similarity = Math.round(100 * Math.max(0, 1 - costs[n][m] / Math.max(n, m) / .4));
+      if (similarity > best) { best = similarity; windowStart = window[0].time; }
     }
     const verified = moving && best >= 90;
     checks.push({ label: "Subida y bajada de ambas manos", ok: moving }, { label: "Recorrido completo de referencia", ok: verified });
-    return reply(verified ? "Recorrido de GRACIAS comprobado. La forma de los dedos aún requiere revisión." : !moving ? "Completá la subida y la bajada con ambas manos; mover solo una no alcanza." : "Repetí el recorrido completo siguiendo el avatar.", best, checks, verified);
+    reply(verified ? "Recorrido de GRACIAS comprobado." : !moving ? "Completá la subida y la bajada con ambas manos; mover solo una no alcanza." : "Repetí el recorrido completo siguiendo el avatar.", best, checks, verified);
+    return this.last = { ...this.last, windowStart };
   }
 }

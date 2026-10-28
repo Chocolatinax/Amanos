@@ -11,7 +11,7 @@ test('catalog edits reach lessons, hidden signs disappear from units, and origin
   assert.equal(result.signs.find(s => s.id === 'a').glosa, 'A nueva');
   assert.equal(result.signs.find(s => s.id === 'a').descripcion.ubicacion, 'Nueva ubicación');
   assert.equal(result.signs.find(s => s.id === 'b'), undefined);
-  assert.equal(result.units.find(u => u.id === '1').signIds.join(','), 'a,c');
+  assert.equal(result.units.find(u => u.id === '1').signIds.join(','), 'a,c,i,s');
   assert.equal(signs.SIGNS.find(s => s.id === 'a').glosa, 'A');
   const empty = catalog.mergeCatalog(signs.SIGNS.map(s => ({ id: s.id, enabled: false })));
   assert.equal(empty.signs.length, 0); assert.equal(empty.units.length, 0);

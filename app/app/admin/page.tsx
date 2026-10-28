@@ -9,7 +9,7 @@ import { SIGNS } from '@/lib/signs';
 import { loadReference } from '@/lib/reference-source';
 import type { AdminUsers, SignEdit, SignSettings } from '@/lib/content';
 
-const referenceIds = ['a', 'b', 'c', 'adios', 'tu', 'hola', 'buenas-tardes', 'gracias', 'mucho-gusto'];
+const referenceIds = ['a', 'b', 'c', 'i', 's', 'adios', 'tu', 'hola', 'buenas-tardes', 'buenos-dias', 'gracias'];
 const fieldStyle = 'mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-3 text-base outline-none focus:ring-2 focus:ring-primary';
 function editFor(id: string, rows: SignSettings[]): SignEdit {
   const base = SIGNS.find(s => s.id === id)!, row = rows.find(s => s.id === id);

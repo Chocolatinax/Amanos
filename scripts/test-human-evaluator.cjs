@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
 function load(f){const exports={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports,require:()=>({})});return exports;}
-const h=load('lib/human-evaluator.ts'),contact=load('lib/contact-guide.ts');
+const h=load('lib/human-evaluator.ts');
 const refs=Object.fromEntries(['tu','gracias','hola'].map(id=>[id,h.parseHumanReference(JSON.parse(fs.readFileSync('public/evaluation/'+id+'.json')),id)]));
 test('human references match their schema and require exact hand counts',()=>{
  for(const [id,r]of Object.entries(refs)){assert(r,id);assert.equal(h.parseHumanReference({...r,signId:'other'},id),null);assert.equal(h.parseHumanReference({...r,requiredHands:3},id),null);}
@@ -50,13 +50,6 @@ test('body locations use consistent image-height units across aspect ratios',()=
  const a=observation(.6),b=observation(1.3);assert(a&&b);
  a.hands[0].anchor.forEach((v,i)=>assert(Math.abs(v-b.hands[0].anchor[i])<1e-10));
  assert.equal(h.observeHuman({},{timestamp:0},500,1),null);
-});
-test('MUCHO GUSTO contact guide never awards a full grade',()=>{
- const r=contact.parseContact(JSON.parse(fs.readFileSync('public/evaluation/mucho-gusto.json')));assert(r);
- const p=Array.from({length:33},()=>({x:.5,y:.5,visibility:1}));p[11].x=.3;p[12].x=.7;p[15].x=.45;p[16].x=.55;
- const body={timestamp:100,imageSize:{width:1000,height:1000},pose:{landmarks:[p]}};
- for(const t of [100,150,400,1000])assert.equal(contact.guideContact(body,t,r).accepted,false);
- assert.equal(contact.guideContact(null,100,r).similarity,0);
 });
 
 test('GRACIAS supplies movement guidance while never recording mastery',()=>{
