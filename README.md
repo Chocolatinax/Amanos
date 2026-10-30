@@ -1,98 +1,119 @@
-# Amanos · demo de 11 señas
+# Amanos
 
-## Ejecutar
+**Web app para aprender Lengua de Señas Salvadoreña (LESSA) con corrección por cámara.**
+Practicás una seña frente a la webcam y la app te dice qué tan parecida es a la referencia, todo
+dentro del navegador, sin mandar video a ningún servidor.
 
-`npm install`, `npm run dev`. Abrir http://localhost:3000.
-`npm run get-model` descarga el modelo; hay respaldo por CDN.
-`npm test` ejecuta las pruebas de reconocimiento y de XP/racha. `npm run build` verifica la aplicación.
+![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands_%26_Pose-0097A7?logo=google&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)
+![three.js](https://img.shields.io/badge/three.js-Avatar_VRM-000000?logo=threedotjs&logoColor=white)
 
-### Modo local vs. con backend
+<!-- TODO: link a la demo en vivo (Vercel) -->
+<!-- TODO: GIF de la práctica con cámara reconociendo una seña, en docs/img/ -->
 
-- **Modo local (por defecto)**: sin `NEXT_PUBLIC_API_URL` todo vive en `localStorage` del navegador. Es lo más seguro para la demo en vivo: no depende de internet ni de un servidor.
-- **Modo API**: con `NEXT_PUBLIC_API_URL=http://localhost:4000` el progreso, la racha, el XP y el plan se guardan en la API. Si el servidor se cae, la app sigue funcionando en local y muestra un aviso.
-- Variables del front (`.env.local`, ver `.env.example`): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_MASTER_THRESHOLD`. Sin client id de Google, el botón "Continuar con Google" hace un login de demo simulado.
+---
 
-## Backend (carpeta `api/`)
+## Qué hace
 
-NestJS + TypeORM. Por defecto guarda en un archivo SQLite (sql.js, sin compilar nada nativo); con `DATABASE_URL` usa Postgres (Supabase, proyecto `amanos`, tablas ya creadas con `api/supabase/migrations`; pon la cadena de conexión del *Session pooler* en `api/.env` y `DB_SYNC=false`).
+- **Lecciones por unidades**: letras (A, B, C, I, S), saludos (hola, buenos días, buenas tardes,
+  adiós), presentación (tú) y cortesía (gracias).
+- **Práctica con cámara**: MediaPipe detecta mano y cuerpo en tiempo real y la app compara tu
+  movimiento contra referencias grabadas del equipo.
+- **Avatar 3D** que muestra cómo se hace cada seña, animado con three.js y un modelo VRM.
+- **Gamificación**: XP, racha diaria, meta del día y dominio por seña.
+- **Login con Google**, plan premium (mock, sin cobro real) y **panel admin** para activar o
+  desactivar la evaluación de cada seña.
+- **Funciona sin backend**: sin API configurada todo vive en `localStorage`, así la demo nunca
+  depende de internet. Con API, el progreso se sincroniza y si el servidor cae la app sigue en
+  modo local.
+- Modo oscuro y diseño pensado para móvil.
 
+---
+
+## Cómo funciona el reconocimiento
+
+```mermaid
+flowchart LR
+    CAM[Webcam] --> MP[MediaPipe Tasks Vision<br/>WASM en el navegador]
+    MP --> LM[21 puntos de la mano<br/>+ pose del cuerpo]
+    LM --> N[Normalización<br/>coordenadas mundiales · espejo por lateralidad]
+    N --> E{Tipo de seña}
+    E -->|Letra| C[Clasificador por similitud<br/>contra muestras de referencia]
+    E -->|Con movimiento| M[Evaluador por fases<br/>+ recorrido de muñecas]
+    C --> R[Puntaje de similitud]
+    M --> R
+    R --> G[XP · racha · dominio]
 ```
+
+- **Letras**: se normalizan los 21 puntos de la mano y se comparan contra todas las clases. El
+  resultado tiene que ganar con margen claro sobre la segunda opción y sostenerse un segundo
+  continuo; un corte de más de 250 ms reinicia el intento.
+- **Señas con movimiento** (gracias, buenos días, adiós...): evaluadores por fases que revisan
+  postura de manos, posición de brazos y el recorrido de las muñecas, con versión espejada para
+  zurdos.
+- El porcentaje es **similitud**, no precisión medida. La validación con señantes nativos de LESSA
+  sigue pendiente y está documentada como tal.
+
+---
+
+## Arquitectura
+
+| Capa | Tecnologías |
+|---|---|
+| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind |
+| Visión por computadora | MediaPipe Tasks Vision (WASM local, con respaldo por CDN) |
+| Avatar | three.js, three-vrm, Kalidokit |
+| Backend | NestJS, TypeORM, Swagger |
+| Base de datos | SQLite (sql.js) en local, PostgreSQL en Supabase con RLS en producción |
+| Auth | Google ID token verificado en el servidor |
+| Pruebas | `node:test` en el front (reconocimiento, gamificación, evaluadores) y Jest + e2e en la API |
+
+Detalles que valen la pena:
+
+- **Una sola fuente de verdad para la gamificación**: las reglas de XP y racha viven en
+  `lib/gamification.ts` y se copian a la API. Un test falla si las dos versiones dejan de ser
+  idénticas.
+- **Fechas en `America/El_Salvador`**, no en UTC, para que la racha se corte a medianoche local.
+- **RLS activo sin políticas** en Supabase: solo la API puede leer y escribir, la API REST pública
+  de Supabase no ve nada.
+- El video de la cámara **nunca sale del dispositivo**; a la API solo llega el puntaje.
+
+---
+
+## Correr el proyecto
+
+```bash
+npm install            # también descarga el modelo de MediaPipe
+npm run dev            # http://localhost:3000
+npm test               # pruebas de reconocimiento y gamificación
+```
+
+Backend opcional:
+
+```bash
 cd api && cp .env.example .env && npm install
-npm run build && npm start        # http://localhost:4000  (Swagger en /docs)
-npm test                          # paridad con el front + pruebas e2e
+npm run build && npm start   # http://localhost:4000, Swagger en /docs
+npm test
 ```
 
-Endpoints: `GET /health`, `GET /catalog`, `GET /plans`, `POST /auth/demo`, `POST /auth/google`, `GET /me`, `GET /progress`, `POST /progress/seen`, `POST /progress/attempts`, `DELETE /progress`, `PUT|DELETE /subscription`, `POST /waitlist`.
+La guía completa (variables de entorno, cómo grabar referencias, endpoints, límites conocidos)
+está en [`docs/DESARROLLO.md`](docs/DESARROLLO.md).
 
-Notas de diseño y límites honestos:
-- Las reglas de XP, racha y meta diaria viven en `lib/gamification.ts` y se copian tal cual a `api/src/progress/gamification.ts`; una prueba falla si dejan de ser idénticas.
-- Los días se calculan en `America/El_Salvador` (no UTC).
-- El puntaje es **similitud** calculada en el navegador. La API lo acota a 0-100 pero no puede verificarlo, así que el progreso no es a prueba de trampa.
-- La suscripción es un **mock**: no hay cobro real. El login de demo se desactiva en producción (`ALLOW_DEMO_AUTH`). Google verifica el ID token en el servidor con `GOOGLE_CLIENT_ID`.
-- Con SQLite las tablas se crean solas. Con Supabase el esquema viene de la migración SQL y RLS está activo sin políticas: solo la API (rol postgres) puede leer y escribir, la API REST pública de Supabase no ve nada.
+---
 
-## Vocabulario acordado
+## Documentación
 
-| Seña | Tipo | Página del material del equipo |
-| --- | --- | --- |
-| A, B, C | Estática | 12–20 |
-| Buenos días, buenas tardes | Con movimiento | 27 |
-| Hola | Con movimiento | Video disponible |
-| Adiós | Con movimiento | 21 |
-| Yo, tú | Estática con ubicación | 29 |
-| Mucho gusto | Con movimiento | 25 |
-| Gracias | Con movimiento | 22 |
+| Documento | Contenido |
+|---|---|
+| [`docs/DESARROLLO.md`](docs/DESARROLLO.md) | Setup, modo local vs API, referencias y limitaciones |
+| [`docs/obsidian/`](docs/obsidian) | Historias de usuario, requerimientos, fases y módulos |
+| [`references/`](references) | Notas de evaluación de cámara y revisión de poses |
 
-Las páginas provienen de la lista del equipo; no equivalen a validación lingüística.
-Todos los ejercicios están accesibles en la demo sin pasar por el plan de pago.
+---
 
-## Preparar las referencias
+## Autor
 
-1. Validar las posturas y videos con una persona que domine LESSA.
-2. Abrir `/capture`: grabar y guardar al menos 20 muestras para **cada una de A, B y C**.
-   Hacer varias tandas, con distintas personas, iluminación e inclinaciones naturales.
-   Guardar una postura incorrecta como referencia enseñará ese error al comparador.
-3. Descargar `a.json`, `b.json`, `c.json` y colocarlos en `public/samples/` para compartirlos.
-   Las muestras guardadas en un navegador no se sincronizan con otros dispositivos.
-4. Las muestras nuevas usan `version: "hand-world-v2"`. Las anteriores no son compatibles:
-   volver a grabarlas. Se conservan en su antigua clave, pero no se utilizan.
-5. Agregar videos revisados a `public/videos/` con los nombres:
-   `a.mp4`, `b.mp4`, `c.mp4`, `buenos-dias.mp4`, `buenas-tardes.mp4`, `adios.mp4`,
-   `yo.mp4`, `tu.mp4`, `mucho-gusto.mp4`, `gracias.mp4`.
-   HOLA utiliza el video existente `public/videos/hola.mp4` y se conserva como práctica guiada adicional.
-6. Ensayar en el equipo de la demo con personas y tomas que no estén en las referencias.
-   Probar también letras equivocadas, posturas desconocidas, dos manos, pérdida de mano y cambios de luz.
-
-## Qué evalúa esta versión
-
-A, B y C: MediaPipe detecta la mano; se normalizan sus 21 puntos en coordenadas mundiales,
-con unidades consistentes y espejo de lateralidad. Se conserva la orientación porque también
-puede ser parte de la seña. El comparador busca la mejor clase entre las tres, exige referencias
-completas y rechaza resultados demasiado cercanos entre clases. Un segundo continuo de
-reconocimiento permite completar la práctica; un corte mayor de 250 ms reinicia el intento.
-
-El porcentaje representa **similitud**, no probabilidad ni precisión medida. Los umbrales siguen
-siendo iniciales y deben calibrarse con tomas independientes. Las pruebas sintéticas verifican
-las reglas del programa, no la calidad del reconocimiento con personas reales.
-
-Las otras ocho señas ofrecen práctica guiada con cámara, sin puntuación ni aprobación automática.
-Reconocerlas requiere secuencias y/o referencias corporales; no se evaluarán como una foto de mano.
-No se inventaron sus configuraciones: las instrucciones esperan el material revisado del equipo.
-
-Se eliminó el atajo que fijaba 92. El progreso nuevo usa `amanos.progress.v2` para no heredar
-aprobaciones simuladas. El progreso viejo permanece almacenado, pero no se presenta como válido.
-
-## Avatar
-
-El proyecto vecino `avatar-senas` mantiene cuerpo y mano en sus referencias respectivas al mover
-el brazo, conserva el signo de la profundidad y aplica el intercambio de manos en IK.
-La interpolación se limita a 0.10 segundos, marca los puntos generados y reporta cobertura real.
-Reextraer desde los videos originales: los JSON antiguos ya rellenados no permiten recuperar
-qué cuadros fueron inventados. Revisar visualmente brazos, pulgares y orientación antes de exportar.
-Pruebas del extractor: `python -m unittest test_extraction.py` desde ese proyecto.
-
-## Limitaciones
-
-El repositorio todavía no contiene los videos ni las muestras de las diez señas acordadas.
-No hay un modelo entrenado para movimiento, ubicación corporal o expresiones.
-El plan comercial es una demo sin cobro. Solo A, B y C se evalúan con cámara; el resto es práctica guiada con video. La validación por señante nativo sigue pendiente.
+**Christian Renderos** ([@ChristianRende22](https://github.com/ChristianRende22)), desarrollador principal.
