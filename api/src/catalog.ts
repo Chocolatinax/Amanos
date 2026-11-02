@@ -10,5 +10,5 @@ export const SIGN_IDS = UNITS.flatMap(u => u.signIds);
 export const isSignId = (id: string) => SIGN_IDS.includes(id);
 export const PLANS = [
   { id: "mensual", nombre: "Plus mensual", precio: 5, moneda: "USD", intervalo: "mes" },
-  { id: "anual", nombre: "Plus anual", precio: 45, moneda: "USD", intervalo: "año", etiqueta: "Ahorrá 25%" },
+  { id: "anual", nombre: "Plus anual", precio: 51, moneda: "USD", intervalo: "año", etiqueta: "Ahorrá 15%" },
 ] as const;
