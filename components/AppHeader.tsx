@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/store";
-import { nextSign, practiceTarget } from "@/lib/nav";
+import { nextSign } from "@/lib/nav";
 import BrandMark from "./BrandMark";
 import Icon from "./Icon";
 import ThemeToggle from "./ThemeToggle";
@@ -21,13 +21,13 @@ export function Avatar({ name, src, size = 32 }: { name: string; src?: string; s
 export function useNavTargets() {
   const { progress } = useApp();
   const { signs } = useCatalog();
-  const next = nextSign(progress, signs), practice = practiceTarget(progress, signs);
-  return { learn: next ? `/app/unidad/${next.unidadId}` : '/app', practice: practice ? `/app/practica/${practice.id}` : '/app' };
+  const next = nextSign(progress, signs);
+  return { route: next ? `/app/unidad/${next.unidadId}` : '/app/unidad/1' };
 }
 export const isActive = (path: string, key: string) =>
-  key === "inicio" ? path === "/" : key === "ruta" ? path === "/app" :
-  key === "aprender" ? path.startsWith("/app/unidad") || path.startsWith("/app/sena") :
-  key === "camara" ? path.startsWith("/app/practica") : key === "progreso" ? path.startsWith("/app/progreso") : false;
+  key === "inicio" ? path === "/" : key === "aprender" ? path === "/app" :
+  key === "ruta" ? ["/app/unidad", "/app/sena", "/app/practica"].some(p => path.startsWith(p)) :
+  key === "progreso" ? path.startsWith("/app/progreso") : false;
 
 export function StreakPill({ n }: { n: number }) {
   return (
@@ -53,9 +53,8 @@ export default function AppHeader() {
 
   const items = [
     { key: "inicio", href: "/", label: "Inicio" },
-    { key: "ruta", href: "/app", label: "Ruta" },
-    { key: "aprender", href: t.learn, label: "Aprender" },
-    { key: "camara", href: t.practice, label: "Práctica con Cámara" },
+    { key: "aprender", href: "/app", label: "Aprender" },
+    { key: "ruta", href: t.route, label: "Ruta" },
     { key: "progreso", href: "/app/progreso", label: "Progreso" },
   ];
   const paid = progress.plan === "pago";
@@ -110,9 +109,8 @@ export function MobileDock() {
   );
   return (
     <nav aria-label="Navegación móvil" className="fixed inset-x-0 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(92vw,420px)] items-center justify-between rounded-full bg-surface-container-lowest px-space-md py-space-xs shadow-[0_8px_24px_-4px_rgba(73,119,205,0.22)] ring-1 ring-outline-variant/40 lg:hidden">
-      <Item href="/app" icon="home" label="Ruta" active={isActive(path, "ruta")} />
-      <Item href={t.learn} icon="school" label="Aprender" active={isActive(path, "aprender")} />
-      <Link href={t.practice} aria-label="Práctica con cámara" className="-mt-7 grid h-14 w-14 place-items-center rounded-full bg-primary-container text-on-primary shadow-lg ring-4 ring-surface"><Icon name="photo_camera" fill className="text-[28px]" /></Link>
+      <Item href="/app" icon="home" label="Aprender" active={isActive(path, "aprender")} />
+      <Item href={t.route} icon="route" label="Ruta" active={isActive(path, "ruta")} />
       <Item href="/app/progreso" icon="monitoring" label="Progreso" active={isActive(path, "progreso")} />
       <Item href="/app/paywall" icon="workspace_premium" label="Plus" active={path.startsWith("/app/paywall")} />
     </nav>

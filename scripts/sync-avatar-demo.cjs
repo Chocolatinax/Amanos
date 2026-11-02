@@ -3,7 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = path.resolve(__dirname, '../../avatar-senas');
 const target = path.resolve(__dirname, '../public/avatar');
-const clips = { a: 'A arreglado', b: 'b', c: 'C', adios: 'Adios', tu: 'Tu', gracias: 'Gracias', hola: 'Hola', 'buenos-dias': 'Buenos dias', 'buenas-tardes': 'Buenas Tardes' };
+const restingLeftArm = ['I', 'S'];
+const clips = { a: 'A arreglado', b: 'b', c: 'C', i: 'I', s: 'S', adios: 'Adios', tu: 'Tu', gracias: 'Gracias', hola: 'Hola', 'buenos-dias': 'Buenos dias', 'buenas-tardes': 'Buenas Tardes' };
 fs.mkdirSync(path.join(target, 'landmarks'), { recursive: true });
 fs.mkdirSync(path.join(target, 'avatares'), { recursive: true });
 fs.mkdirSync(path.resolve(__dirname, '../public/movements'), { recursive: true });
@@ -11,6 +12,8 @@ for (const file of ['viewer.html', 'demo-corrections.js', 'avatares/Amanos.vrm']
   fs.copyFileSync(path.join(source, file), path.join(target, file));
 }
 let html = fs.readFileSync(path.join(target, 'viewer.html'), 'utf8');
+// The review player lists its presets by hand; the embedded mode selects them by value.
+html = html.replace('<option value="C">C</option>', '<option value="C">C</option><option value="I">I</option><option value="S">S</option>');
 // Libraries are served from public/avatar/vendor so a CDN outage cannot leave the avatar loading forever.
 html = html.replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/[^"]+\/([^"/]+\.js)/g, 'vendor/$1');
 html = html.replace("$('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';", "if (!document.body.classList.contains('embedded')) $('referenceVideo').src = 'videos/' + encodeURIComponent(name) + '.mp4';");
@@ -60,7 +63,16 @@ if (demoClips[demoSign]) {
 fs.writeFileSync(path.join(target, 'viewer.html'), html);
 const manifest = { schemaVersion: 1, purpose: 'camera-recognition-reference', status: 'reference-only', coordinateSystem: 'mediapipe-holistic-normalized-image', notes: 'Original detections, including pose and interpolation flags. Not hand-world-v2 classifier samples. Dynamic/location signs require temporal/body validation.', signs: [] };
 for (const [id, name] of Object.entries(clips)) {
-  const raw = fs.readFileSync(path.join(source, 'landmarks', name + '.json'));
+  let raw = fs.readFileSync(path.join(source, 'landmarks', name + '.json'));
+  // In these clips the free arm rests below the frame; its landmarks are guesses and bend the avatar's arm across the body.
+  if (restingLeftArm.includes(name)) {
+    const clip = JSON.parse(raw);
+    for (const frame of clip.frames) {
+      frame.leftHand = null;
+      for (const i of [13, 15, 17, 19, 21]) if (frame.pose?.[i]) frame.pose[i].visibility = 0;
+    }
+    raw = Buffer.from(JSON.stringify(clip));
+  }
   for (const destination of [path.join(target, 'landmarks', name + '.json'), path.resolve(__dirname, '../public/movements', id + '.json')]) {
     if (!fs.existsSync(destination) || !fs.readFileSync(destination).equals(raw)) fs.writeFileSync(destination, raw);
   }

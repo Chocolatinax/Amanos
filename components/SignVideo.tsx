@@ -4,7 +4,7 @@ import type { Sign } from "@/lib/signs";
 import { useIsDark } from "@/lib/theme";
 import Icon from "./Icon";
 
-export const AVATAR_SIGN_IDS = ["a", "b", "c", "adios", "tu", "gracias", "hola", "buenos-dias", "buenas-tardes"];
+export const AVATAR_SIGN_IDS = ["a", "b", "c", "i", "s", "adios", "tu", "gracias", "hola", "buenos-dias", "buenas-tardes"];
 // The VRM is ~14 MB; slow phone connections need time, but a dead load must not spin forever.
 const LOAD_TIMEOUT_MS = 45000;
 
@@ -37,7 +37,7 @@ export default function SignVideo({ sign, className = "", variant = "mini", rati
     <div className={`relative overflow-hidden rounded-2xl bg-inverse-surface ${className}`} style={ratio === "none" ? undefined : { aspectRatio: ratio }}>
       {available ? <>
         {/* Se monta cuando ya se conoce el tema, para no descargar el avatar dos veces. */}
-        {dark !== null && <iframe ref={frame} key={`${sign.id}-${attempt}-${dark ? "d" : "l"}`} src={`/avatar/viewer.html?sign=${sign.id}&compact=${variant === "mini" ? "1" : "0"}${dark ? "&theme=dark" : ""}&v=hands-14`}
+        {dark !== null && <iframe ref={frame} key={`${sign.id}-${attempt}-${dark ? "d" : "l"}`} src={`/avatar/viewer.html?sign=${sign.id}&compact=${variant === "mini" ? "1" : "0"}${dark ? "&theme=dark" : ""}&v=hands-16`}
           title={`Avatar: ${sign.glosa}`} className="absolute inset-0 h-full w-full border-0" />}
         {state === "loading" && <div role="status" className={`pointer-events-none absolute inset-0 grid place-items-center ${stage}`}>
           <span className="flex flex-col items-center gap-2 px-3 text-center text-xs font-semibold"><span className="h-6 w-6 animate-spin rounded-full border-2 border-current border-r-transparent" />Cargando avatar…</span>

@@ -32,7 +32,7 @@ body.dark #demoMessage{color:#dce6fa}
 <body>
 <div id="panel">
   <b>Amanos, avatar de senas</b>
-  <label>Señas preparadas<select id="preset"><option value="A arreglado">A · corregida</option><option value="b">B</option><option value="Hola">HOLA</option><option value="C">C</option><option value="Adios">ADIÓS</option><option value="Tu">TÚ</option><option value="Gracias">GRACIAS</option><option value="Mucho gusto">MUCHO GUSTO</option><option value="Buenos dias">BUENOS DÍAS · revisión</option><option value="Yo">YO · revisión</option><option value="Buenas Tardes">BUENAS TARDES · revisión</option></select></label>
+  <label>Señas preparadas<select id="preset"><option value="A arreglado">A · corregida</option><option value="b">B</option><option value="Hola">HOLA</option><option value="C">C</option><option value="I">I</option><option value="S">S</option><option value="Adios">ADIÓS</option><option value="Tu">TÚ</option><option value="Gracias">GRACIAS</option><option value="Mucho gusto">MUCHO GUSTO</option><option value="Buenos dias">BUENOS DÍAS · revisión</option><option value="Yo">YO · revisión</option><option value="Buenas Tardes">BUENAS TARDES · revisión</option></select></label>
   <button id="loadPreset">Cargar video y avatar</button>
   <div style="font-size:12px;color:#aaa">Compará con el original. Usá el control de cuadros para revisar cada postura.</div>
   <label>1. Avatar (.vrm, VRM 0.x)<input type="file" id="vrmFile" accept=".vrm"></label>
@@ -531,7 +531,7 @@ if (reviewPreset && Array.from($('preset').options).some(option => option.value 
 
 // Embedded lesson mode uses the same rig and authored corrections as the review player.
 const demoSign = new URLSearchParams(location.search).get('sign');
-const demoClips = {"a":"A arreglado","b":"b","c":"C","adios":"Adios","tu":"Tu","gracias":"Gracias","hola":"Hola","buenos-dias":"Buenos dias","buenas-tardes":"Buenas Tardes"};
+const demoClips = {"a":"A arreglado","b":"b","c":"C","i":"I","s":"S","adios":"Adios","tu":"Tu","gracias":"Gracias","hola":"Hola","buenos-dias":"Buenos dias","buenas-tardes":"Buenas Tardes"};
 if (demoClips[demoSign]) {
   document.body.classList.add('embedded');
   if (new URLSearchParams(location.search).get('compact') === '1') document.body.classList.add('compact');

@@ -8,11 +8,10 @@ import Icon from "@/components/Icon";
 import ScoreRing from "@/components/ScoreRing";
 import SignVideo, { AVATAR_SIGN_IDS } from "@/components/SignVideo";
 import { normalize } from "@/lib/hand";
-import { evaluateA } from "@/lib/letter-a";
+import { evaluateA, evaluateI, evaluateS } from "@/lib/letter-fist";
 import { BuenasTardesTracker } from "@/lib/buenas-tardes";
 import { evaluateB } from "@/lib/letter-b";
 import { evaluateC } from "@/lib/letter-c";
-import { LETTER_RIVALS, evaluateLetter } from "@/lib/letter-is";
 import { AdiosTracker, parseAdios, wristAnchor, type AdiosReference } from "@/lib/adios";
 import type { BodyFrame } from "@/lib/body-tracking";
 import { BODY_EVALUATED_IDS, CAMERA_EVALUATED_IDS, HumanEvaluator, observeHuman, parseHumanReference, type HumanReference } from "@/lib/human-evaluator";
@@ -134,7 +133,7 @@ function Practice({ id }: { id: string }) {
         adiosReference.current = parseAdios(value); setSequenceReady(!!adiosReference.current); setSets([]);
         if (!adiosReference.current) setError("No se pudo cargar la referencia de ADIÓS. Recargá la página.");
       }).catch(() => { if (!cancelled) { setSets([]); setError("No se pudo cargar la referencia de ADIÓS. Revisá la conexión."); } });
-    } else if (evaluable) Promise.all((STATIC_SIGN_IDS.includes(id) ? [id, ...(LETTER_RIVALS[id] ?? [])] : STATIC_SIGN_IDS).map(loadSamples)).then(results => {
+    } else if (evaluable) Promise.all((STATIC_SIGN_IDS.includes(id) ? [id] : STATIC_SIGN_IDS).map(loadSamples)).then(results => {
       if (cancelled) return;
       const loaded = results.filter((s): s is SampleSet => s !== null);
       setsRef.current = loaded; setSets(loaded);
@@ -175,7 +174,8 @@ function Practice({ id }: { id: string }) {
     const aCheck = id === "a" ? evaluateA(vec, setsRef.current.find(s => s.signId === "a"))
       : id === "b" ? evaluateB(vec, setsRef.current.find(s => s.signId === "b"))
       : id === "c" ? evaluateC(vec, setsRef.current.find(s => s.signId === "c"))
-      : id === "i" || id === "s" ? evaluateLetter(vec, id, setsRef.current)
+      : id === "i" ? evaluateI(vec, setsRef.current.find(s => s.signId === "i"))
+      : id === "s" ? evaluateS(vec, setsRef.current.find(s => s.signId === "s"))
       : id === "adios" ? adios.current.update(vec, anchor, ts, adiosReference.current)
       : id === "buenas-tardes" ? buenasTardes.current.update(observeHuman(res, body, ts, 1), humanReference.current)
       : id === "buenos-dias" ? buenosDias.current.update(observeBuenosDias(res, body, ts), buenosDiasReference.current)
@@ -264,7 +264,7 @@ function Practice({ id }: { id: string }) {
               {movementCheck.checks.map(check => <li key={check.label} className={`flex items-start gap-1 ${check.ok ? "text-secondary" : "text-on-surface-variant"}`}><Icon name={check.ok ? "check_circle" : "radio_button_unchecked"} className="shrink-0 text-sm" /><span>{check.label}</span></li>)}
             </ul>}
             {ready && <div className="mt-2 flex items-center justify-between gap-2 border-t border-outline-variant/40 pt-2 md:mt-3 md:pt-3 text-xs text-on-surface-variant">
-              <span title="Comparación con las muestras de referencia; no es una probabilidad de acierto.">Similitud con la referencia</span>
+              <span title={["a", "s", "i"].includes(id) ? "Mide la forma de tu mano; no es una probabilidad de acierto." : "Comparación con las muestras de referencia; no es una probabilidad de acierto."}>{["a", "s", "i"].includes(id) ? "Similitud de la forma" : "Similitud con la referencia"}</span>
               <span className="shrink-0 tabular-nums">Mejor: {best}%</span>
             </div>}
           </div>
@@ -354,7 +354,7 @@ function GuideModal({ sign, unitLabel, evaluable, samplesPending, evaluationAllo
   ];
   const mode = !evaluationAllowed ? "La evaluación de esta seña está pausada. Podés ensayarla siguiendo el avatar."
     : samplesPending ? "Todavía faltan las muestras de referencia de la cámara para calificar esta seña. Podés ensayarla siguiendo el avatar."
-    : evaluable ? "Se califica con cámara: tu porcentaje es la similitud con las muestras de referencia."
+    : evaluable ? (["a", "s", "i"].includes(sign.id) ? "Se califica con cámara: tu porcentaje mide la forma de la mano, sin importar dónde la tengás." : "Se califica con cámara: tu porcentaje es la similitud con las muestras de referencia.")
     : `Con la cámara podés ensayar esta seña, pero todavía no se califica: ${sign.tipo === "estatica" ? "faltan las muestras de referencia de la cámara" : sign.tipo === "dinamica" ? "requiere evaluar el movimiento completo" : "requiere evaluar la ubicación respecto al cuerpo"}.`;
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="guide-title" className="absolute inset-0 z-30 flex items-end justify-center bg-inverse-surface/55 p-2 backdrop-blur-[2px] sm:items-center sm:p-space-md">

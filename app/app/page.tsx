@@ -137,7 +137,7 @@ export default function Dashboard() {
       <section className="flex flex-col gap-space-md">
         <div className="flex flex-col justify-between gap-space-xs sm:flex-row sm:items-end">
           <div>
-            <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-primary">Tu ruta de aprendizaje</span>
+            <span className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-primary">Tu camino de aprendizaje</span>
             <h2 className="font-headline-lg text-headline-lg text-on-surface">{unit.nombre}</h2>
           </div>
           <div className="flex items-center gap-space-sm">

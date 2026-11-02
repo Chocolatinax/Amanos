@@ -33,6 +33,24 @@
       "height": 850
     },
     {
+      "id": "i",
+      "name": "I",
+      "url": "/movements/i.json",
+      "frames": 94,
+      "fps": 30,
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "id": "s",
+      "name": "S",
+      "url": "/movements/s.json",
+      "frames": 106,
+      "fps": 29.861751152073733,
+      "width": 576,
+      "height": 1024
+    },
+    {
       "id": "adios",
       "name": "Adios",
       "url": "/movements/adios.json",

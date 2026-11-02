@@ -61,7 +61,7 @@ export default function Landing() {
               <h1 className="mt-space-md font-headline-xl-mobile text-headline-xl-mobile tracking-tight md:font-headline-xl md:text-headline-xl">Dominá la Lengua de Señas Salvadoreña <span className="text-primary-container">seña por seña</span></h1>
               <p className="mt-space-md max-w-xl font-body-lg text-body-lg text-on-surface-variant">Aprendé con videos y practicá frente a tu cámara, sin penas y sin grabaciones. Empezá hoy mismo.</p>
               <div className="mt-space-lg flex flex-wrap gap-space-sm">
-                <Link href={cta} className="btn-push-primary h-14 !px-space-xl">{user ? "Ir a mi ruta" : "Empezar gratis"} <Icon name="arrow_forward" className="text-lg" /></Link>
+                <Link href={cta} className="btn-push-primary h-14 !px-space-xl">{user ? "Seguir aprendiendo" : "Empezar gratis"} <Icon name="arrow_forward" className="text-lg" /></Link>
                 <a href="#como" className="btn-push-ghost h-14"><Icon name="play_circle" className="text-lg text-primary" /> Cómo funciona</a>
               </div>
               <p className="mt-space-md flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><Icon name="lock" className="text-base text-secondary" /> Privacidad total: tu video no sale de tu navegador ni viaja a ningún servidor.</p>

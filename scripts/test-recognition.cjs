@@ -56,7 +56,7 @@ test('normalization ignores image aspect ratio but retains orientation; rejects 
   assert.notDeepEqual(a, rotated);
 });
 
-const letterA = load('lib/letter-a.ts', { './classifier': c });
+const letterA = load('lib/letter-fist.ts', { './classifier': c });
 const aReference = JSON.parse(fs.readFileSync('public/samples/a.json', 'utf8'));
 test('A accepts captured reference poses and rejects missing or unrelated data', () => {
   assert(aReference.samples.length >= c.MIN_SAMPLES);
@@ -95,7 +95,7 @@ test('B accepts captured samples and rejects a fist, spread fingers and an outwa
 
 
 test('corrected A rejects a moderately separated thumb even before the old broad limit',()=>{
- const {evaluateA}=load('lib/letter-a.ts',{'./classifier':c});
+ const {evaluateA}=load('lib/letter-fist.ts',{'./classifier':c});
  const reference=JSON.parse(fs.readFileSync('public/samples/a.json'));
  const v=[...reference.samples[15]];
  for(let k=0;k<3;k++)v[12+k]+=.24*(v[15+k]-v[51+k]);

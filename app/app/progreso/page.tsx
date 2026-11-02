@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { practiceTarget } from "@/lib/nav";
+import { AVATAR_SIGN_IDS } from "@/components/SignVideo";
 import { useCatalog } from "@/lib/catalog";
 import { useApp } from "@/lib/store";
 
@@ -81,8 +82,9 @@ export default function ProgressPage() {
             const today = d.state === "today" || d.state === "today-done";
             return (
               <div key={d.date} className={`relative flex flex-col items-center gap-1 rounded-xl px-1 py-space-sm ${today ? "bg-primary-fixed" : done ? "bg-surface-container-low" : ""}`}>
-                {today && <span className="absolute -top-2 rounded-full bg-tertiary-container px-2 py-0.5 font-label-sm text-[10px] text-on-tertiary-container">HOY</span>}
-                <span className="font-label-sm text-label-sm text-on-surface-variant">{d.label}</span>
+                {today
+                  ? <span title={d.label} className="rounded-full bg-tertiary-container px-2 font-label-sm text-[10px] leading-4 text-on-tertiary-container">HOY</span>
+                  : <span className="font-label-sm text-label-sm text-on-surface-variant">{d.label}</span>}
                 <span className={`grid h-9 w-9 place-items-center rounded-full ${done ? "bg-secondary text-on-secondary" : today ? "bg-tertiary-fixed text-tertiary" : "bg-surface-container-high text-outline"}`}>
                   <Icon name={done ? "check" : today ? "local_fire_department" : d.state === "missed" ? "remove" : "schedule"} fill={today && !done} className="text-lg" />
                 </span>
@@ -108,8 +110,14 @@ export default function ProgressPage() {
             const sp = progress.signs[s.id]; const st = status(s.id);
             return (
               <article key={s.id} className="card-surface overflow-hidden">
-                <div className="relative grid h-36 place-items-center bg-gradient-to-br from-primary-fixed to-surface-container">
-                  <span className="px-2 text-center font-headline-lg text-headline-lg text-primary">{s.glosa}</span>
+                <div className="relative grid h-36 place-items-center overflow-hidden bg-gradient-to-br from-primary-fixed to-surface-container">
+                  {AVATAR_SIGN_IDS.includes(s.id) ? <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/avatar/poses/${s.id}.webp`} alt={`Avatar haciendo la seña ${s.glosa}`} loading="lazy" className="absolute inset-0 h-full w-full object-cover object-top dark:hidden" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/avatar/poses/${s.id}-dark.webp`} alt={`Avatar haciendo la seña ${s.glosa}`} loading="lazy" className="absolute inset-0 hidden h-full w-full object-cover object-top dark:block" />
+                    <span className="absolute bottom-space-sm left-space-sm rounded-full bg-surface-container-lowest/90 px-space-sm py-0.5 font-label-md text-label-md text-primary shadow-sm">{s.glosa}</span>
+                  </> : <span className="px-2 text-center font-headline-lg text-headline-lg text-primary">{s.glosa}</span>}
                   <span className={`absolute right-space-sm top-space-sm rounded-full px-space-sm py-0.5 font-label-sm text-xs ${st === "dominadas" ? "bg-secondary text-on-secondary" : st === "practica" ? "bg-tertiary-fixed text-on-tertiary-fixed" : "bg-surface-container-lowest text-on-surface-variant"}`}>{st === "dominadas" ? "Dominada" : st === "practica" ? "En práctica" : "Nueva"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-space-sm p-space-md">

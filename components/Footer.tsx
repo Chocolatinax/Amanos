@@ -9,7 +9,7 @@ export default function Footer() {
           <span className="font-body-sm text-body-sm text-on-surface-variant">Micro-aprendizaje de la Lengua de Señas Salvadoreña (LESSA)</span>
         </div>
         <nav className="flex flex-wrap items-center justify-center gap-space-lg">
-          <Link href="/app" className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface">Ruta</Link>
+          <Link href="/app" className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface">Aprender</Link>
           <Link href="/app/progreso" className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface">Progreso</Link>
           <Link href="/app/paywall" className="font-label-md text-label-md text-on-surface-variant transition-colors hover:text-on-surface">Membresía Plus</Link>
         </nav>
