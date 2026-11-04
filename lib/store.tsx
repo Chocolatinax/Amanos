@@ -65,16 +65,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const u = getUser(); const t = getToken();
       if (!u || (mode === "api" && !t)) { if (u) clearSession(); setReady(true); return; }
       setUser({ ...u, isAdmin: false });
-      if (mode === "local") { setProgress(loadProgress()); setReady(true); return; }
+      // Abrimos al toque con lo guardado en el dispositivo y sincronizamos en segundo plano.
+      // Así un servidor dormido (Render free tarda ~1 min en despertar) no deja la app en "Cargando…".
+      setProgress(loadProgress()); setReady(true);
+      if (mode === "local") return;
       try {
         const session = await api.me(t!); setUser(session.user); saveSession(session.user, t!);
         const e = await api.progress(t!); adopt(e.progress, e.stats); setSyncError(false);
       }
       catch (err) {
         if (err instanceof ApiError && err.status === 401) logout();
-        else { setProgress(loadProgress()); setSyncError(true); } // servidor caído: seguimos con lo guardado
+        else setSyncError(true); // servidor caído o despertando: seguimos con lo guardado
       }
-      setReady(true);
     })();
   }, [mode, adopt, logout]);
 

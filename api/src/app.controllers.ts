@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Throttle } from "@nestjs/throttler";
 import { IsEmail, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { AuthGuard, AuthService, CurrentUserId, CurrentSession, Session } from "./auth/auth";
 import { ProgressService } from "./progress/progress.service";
 import { PLANS, SIGN_IDS, UNITS } from "./catalog";
@@ -21,7 +21,12 @@ class WaitlistDto { @IsEmail() @MaxLength(200) email: string; @IsOptional() @IsS
 
 @ApiTags("sistema") @Controller()
 export class SystemController {
-  @Get("health") health() { return { status: "ok" }; }
+  constructor(private readonly db: DataSource) {}
+  /** También toca la DB: el ping del keep-alive mantiene despiertos Render y Supabase. */
+  @Get("health") async health() {
+    try { await this.db.query("SELECT 1"); return { status: "ok", db: "ok" }; }
+    catch { return { status: "ok", db: "down" }; }
+  }
   @Get("catalog") catalog() { return { units: UNITS, signIds: SIGN_IDS, masterThreshold: threshold() }; }
   @Get("plans") plans() { return PLANS; }
 }

@@ -29,7 +29,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     } finally { setReady(true); }
   }, []);
   useEffect(() => {
-    try { const cached = JSON.parse(localStorage.getItem('amanos.catalog.v1') || '[]'); if (hasBackend() && Array.isArray(cached)) setSettings(cached); } catch {}
+    try { const cached = JSON.parse(localStorage.getItem('amanos.catalog.v1') || '[]'); if (hasBackend() && Array.isArray(cached) && cached.length) { setSettings(cached); setReady(true); } } catch {}
     void refresh().catch(() => {});
     const onFocus = () => void refresh().catch(() => {});
     window.addEventListener('focus', onFocus);
