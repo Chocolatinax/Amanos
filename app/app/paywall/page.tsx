@@ -68,7 +68,7 @@ function Paywall() {
               <span className="font-headline-xl text-headline-xl font-extrabold">${plan.precio}</span>
               <span className="font-body-md text-body-md font-medium text-on-surface-variant">/ {plan.intervalo}</span>
             </div>
-            {planId === "anual" && <p className="font-body-sm text-body-sm font-semibold text-secondary">Equivale a $4.25 al mes. Te ahorrás $9 frente al plan mensual.</p>}
+            {planId === "anual" && <p className="font-body-sm text-body-sm font-semibold text-secondary">Equivale a $4 al mes. Te ahorrás $12 frente al plan mensual.</p>}
 
             <ul className="mt-space-lg flex flex-col gap-space-sm">
               {PLUS.map(f => (
